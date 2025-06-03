@@ -1,0 +1,299 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Alerta Arroyo Escobar</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <style>
+    :root {
+      --color-primario: #1e88e5;
+      --color-secundario: #ff7043;
+      --fondo-oscuro: #121212;
+      --fondo-tarjeta: #1e1e1e;
+      --texto-claro: #f5f5f5;
+      --texto-secundario: #9e9e9e;
+    }
+    
+    body {
+      margin: 0;
+      padding: 1rem;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background-color: var(--fondo-oscuro);
+      color: var(--texto-claro);
+      line-height: 1.5;
+    }
+    
+    .contenedor {
+      max-width: 800px;
+      margin: 0 auto;
+    }
+    
+    .encabezado {
+      text-align: center;
+      margin-bottom: 1.5rem;
+      padding-bottom: 1rem;
+      border-bottom: 1px solid #333;
+    }
+    
+    .encabezado h1 {
+      color: var(--color-primario);
+      margin-bottom: 0.5rem;
+    }
+    
+    .encabezado h2 {
+      color: var(--color-secundario);
+      margin-top: 0;
+      font-size: 1.2rem;
+    }
+    
+    .selector-tiempo {
+      display: flex;
+      justify-content: center;
+      gap: 0.5rem;
+      margin-bottom: 1.5rem;
+      flex-wrap: wrap;
+    }
+    
+    .selector-tiempo button {
+      padding: 0.5rem 1rem;
+      background-color: #333;
+      color: var(--texto-claro);
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      transition: all 0.3s;
+    }
+    
+    .selector-tiempo button.active {
+      background-color: var(--color-primario);
+      font-weight: bold;
+    }
+    
+    .grid-estaciones {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+      gap: 1.5rem;
+      margin-bottom: 2rem;
+    }
+    
+    .tarjeta-estacion {
+      background-color: var(--fondo-tarjeta);
+      border-radius: 8px;
+      padding: 1.5rem;
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+    }
+    
+    .nombre-estacion {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      margin-bottom: 1rem;
+      color: var(--color-secundario);
+      font-size: 1.1rem;
+      font-weight: bold;
+    }
+    
+    .dato-meteo {
+      margin-bottom: 1rem;
+    }
+    
+    .dato-valor {
+      font-size: 1.8rem;
+      font-weight: bold;
+      color: var(--color-primario);
+    }
+    
+    .dato-etiqueta {
+      font-size: 0.9rem;
+      color: var(--texto-secundario);
+    }
+    
+    .actualizacion {
+      font-size: 0.8rem;
+      text-align: right;
+      color: var(--texto-secundario);
+      margin-top: 1rem;
+    }
+    
+    .footer {
+      text-align: center;
+      margin-top: 2rem;
+      font-size: 0.8rem;
+      color: var(--texto-secundario);
+    }
+    
+    @media (max-width: 600px) {
+      .grid-estaciones {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="contenedor">
+    <div class="encabezado">
+      <h1><i class="fas fa-water"></i> Arroyo Escobar</h1>
+      <h2>Alerta Temprana de Inundaciones</h2>
+    </div>
+    
+    <div class="selector-tiempo">
+      <button class="active" data-horas="24">24 horas</button>
+      <button data-horas="48">48 horas</button>
+      <button data-horas="72">72 horas</button>
+      <button data-horas="168">Semanal</button>
+      <button data-horas="720">Mensual</button>
+    </div>
+    
+    <div class="grid-estaciones">
+      <!-- Estación Pilar (Aguas Arriba) -->
+      <div class="tarjeta-estacion">
+        <div class="nombre-estacion">
+          <i class="fas fa-arrow-up"></i>
+          <span>Pilar (Aguas Arriba) - IPILAR83</span>
+        </div>
+        
+        <div class="dato-meteo">
+          <div class="dato-valor" id="lluvia-pilar">-- mm</div>
+          <div class="dato-etiqueta">Lluvia acumulada</div>
+        </div>
+        
+        <div class="actualizacion" id="actualizacion-pilar">Actualizando...</div>
+      </div>
+      
+      <!-- Estación Del Viso (Aguas Medias) -->
+      <div class="tarjeta-estacion">
+        <div class="nombre-estacion">
+          <i class="fas fa-arrows-alt-h"></i>
+          <span>Del Viso (Aguas Medias) - IDELVI4</span>
+        </div>
+        
+        <div class="dato-meteo">
+          <div class="dato-valor" id="lluvia-delviso">-- mm</div>
+          <div class="dato-etiqueta">Lluvia acumulada</div>
+        </div>
+        
+        <div class="actualizacion" id="actualizacion-delviso">Actualizando...</div>
+      </div>
+      
+      <!-- Estación Maschwitz (Aguas Abajo) -->
+      <div class="tarjeta-estacion">
+        <div class="nombre-estacion">
+          <i class="fas fa-arrow-down"></i>
+          <span>Maschwitz (Aguas Abajo) - IINGEN19</span>
+        </div>
+        
+        <div class="dato-meteo">
+          <div class="dato-valor" id="lluvia-maschwitz">-- mm</div>
+          <div class="dato-etiqueta">Lluvia acumulada</div>
+        </div>
+        
+        <div class="actualizacion" id="actualizacion-maschwitz">Actualizando...</div>
+      </div>
+    </div>
+    
+    <div class="footer">
+      <p>Actualización automática cada 5 minutos</p>
+      <p>Datos guardados en Google Sheets para historial</p>
+    </div>
+  </div>
+
+  <script>
+    // Configuración
+    const estaciones = {
+      pilar: {
+        id: "IPILAR83",
+        nombre: "Pilar (Aguas Arriba)",
+        elementoLluvia: "lluvia-pilar",
+        elementoActualizacion: "actualizacion-pilar"
+      },
+      delviso: {
+        id: "IDELVI4",
+        nombre: "Del Viso (Aguas Medias)",
+        elementoLluvia: "lluvia-delviso",
+        elementoActualizacion: "actualizacion-delviso"
+      },
+      maschwitz: {
+        id: "IINGEN19",
+        nombre: "Maschwitz (Aguas Abajo)",
+        elementoLluvia: "lluvia-maschwitz",
+        elementoActualizacion: "actualizacion-maschwitz"
+      }
+    };
+    
+    const apiKey = "6532d6454b8aa370768e63d6ba5a832e";
+    const intervaloActualizacion = 5 * 60 * 1000; // 5 minutos
+    let horasSeleccionadas = 24;
+    
+    // Función para obtener lluvia acumulada
+    async function obtenerLluviaAcumulada(idEstacion, horas) {
+      try {
+        const fechaFin = new Date();
+        const fechaInicio = new Date(fechaFin);
+        fechaInicio.setHours(fechaInicio.getHours() - horas);
+        
+        const url = `https://api.weather.com/v2/pws/history/hourly?stationId=${idEstacion}&format=json&units=m&apiKey=${apiKey}&startDate=${fechaInicio.toISOString().split('T')[0]}`;
+        
+        const response = await fetch(url);
+        const data = await response.json();
+        
+        if (data.observations?.length > 0) {
+          const lluviaTotal = data.observations.reduce((total, obs) => {
+            return total + (obs.metric.precipTotal || 0);
+          }, 0);
+          
+          return {
+            valor: lluviaTotal.toFixed(1),
+            actualizacion: data.observations[0].obsTimeLocal
+          };
+        }
+      } catch (error) {
+        console.error(`Error obteniendo datos de ${idEstacion}:`, error);
+      }
+      
+      return {
+        valor: "--",
+        actualizacion: "Error"
+      };
+    }
+    
+    // Función para actualizar los datos
+    async function actualizarDatos() {
+      for (const [key, estacion] of Object.entries(estaciones)) {
+        const { valor, actualizacion } = await obtenerLluviaAcumulada(estacion.id, horasSeleccionadas);
+        
+        document.getElementById(estacion.elementoLluvia).textContent = `${valor} mm`;
+        document.getElementById(estacion.elementoActualizacion).textContent = 
+          `Actualizado: ${new Date(actualizacion).toLocaleTimeString('es-AR', {hour: '2-digit', minute:'2-digit'})}`;
+        
+        // Guardar en Google Sheets (opcional)
+        if (valor !== "--") {
+          guardarEnGoogleSheets(estacion.id, valor, horasSeleccionadas);
+        }
+      }
+    }
+    
+    // Función para guardar en Google Sheets (requiere configuración adicional)
+    function guardarEnGoogleSheets(idEstacion, lluvia, horas) {
+      // Esta función requiere que configures un Google Apps Script
+      // como se explica más abajo
+      console.log(`Registrando: ${idEstacion} - ${lluvia}mm en ${horas}h`);
+      // Implementación real requeriría una URL de Web App
+    }
+    
+    // Selector de tiempo
+    document.querySelectorAll('.selector-tiempo button').forEach(button => {
+      button.addEventListener('click', () => {
+        document.querySelector('.selector-tiempo button.active').classList.remove('active');
+        button.classList.add('active');
+        horasSeleccionadas = parseInt(button.dataset.horas);
+        actualizarDatos();
+      });
+    });
+    
+    // Inicialización
+    actualizarDatos();
+    setInterval(actualizarDatos, intervaloActualizacion);
+  </script>
+</body>
+</html>
