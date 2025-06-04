@@ -13,56 +13,65 @@
       --fondo-tarjeta: #1e1e1e;
       --texto-claro: #f5f5f5;
       --texto-secundario: #9e9e9e;
+      --color-promedio: #4caf50;
+      --color-temperatura: rgba(255, 255, 255, 0.6);
     }
     
     body {
       margin: 0;
-      padding: 1rem;
+      padding: 10px;
       font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
       background-color: var(--fondo-oscuro);
       color: var(--texto-claro);
-      line-height: 1.5;
+      line-height: 1.4;
+      font-size: 14px;
     }
     
     .contenedor {
-      max-width: 800px;
+      max-width: 390px;
       margin: 0 auto;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
     }
     
     .encabezado {
       text-align: center;
-      margin-bottom: 1.5rem;
-      padding-bottom: 1rem;
+      margin-bottom: 12px;
+      padding-bottom: 10px;
       border-bottom: 1px solid #333;
     }
     
     .encabezado h1 {
       color: var(--color-primario);
-      margin-bottom: 0.5rem;
+      margin-bottom: 4px;
+      font-size: 18px;
     }
     
     .encabezado h2 {
       color: var(--color-secundario);
       margin-top: 0;
-      font-size: 1.2rem;
+      font-size: 14px;
+      font-weight: normal;
     }
     
     .selector-tiempo {
       display: flex;
       justify-content: center;
-      gap: 0.5rem;
-      margin-bottom: 1.5rem;
+      gap: 6px;
+      margin-bottom: 12px;
       flex-wrap: wrap;
     }
     
     .selector-tiempo button {
-      padding: 0.5rem 1rem;
+      padding: 6px 10px;
       background-color: #333;
       color: var(--texto-claro);
       border: none;
       border-radius: 4px;
       cursor: pointer;
       transition: all 0.3s;
+      font-size: 12px;
     }
     
     .selector-tiempo button.active {
@@ -71,62 +80,96 @@
     }
     
     .grid-estaciones {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-      gap: 1.5rem;
-      margin-bottom: 2rem;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      margin-bottom: 15px;
     }
     
     .tarjeta-estacion {
       background-color: var(--fondo-tarjeta);
       border-radius: 8px;
-      padding: 1.5rem;
+      padding: 12px;
       box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+      position: relative;
     }
     
     .nombre-estacion {
       display: flex;
       align-items: center;
-      gap: 0.5rem;
-      margin-bottom: 1rem;
+      gap: 6px;
+      margin-bottom: 10px;
       color: var(--color-secundario);
-      font-size: 1.1rem;
+      font-size: 14px;
       font-weight: bold;
     }
     
     .dato-meteo {
-      margin-bottom: 1rem;
+      margin-bottom: 10px;
     }
     
     .dato-valor {
-      font-size: 1.8rem;
+      font-size: 24px;
       font-weight: bold;
       color: var(--color-primario);
     }
     
     .dato-etiqueta {
-      font-size: 0.9rem;
+      font-size: 12px;
       color: var(--texto-secundario);
     }
     
+    .temperatura-actual {
+      position: absolute;
+      top: 12px;
+      right: 12px;
+      font-size: 12px;
+      color: var(--color-temperatura);
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+    
     .actualizacion {
-      font-size: 0.8rem;
+      font-size: 11px;
       text-align: right;
       color: var(--texto-secundario);
-      margin-top: 1rem;
+      margin-top: 8px;
+    }
+    
+    .fecha-actualizacion {
+      font-size: 10px;
+      opacity: 0.7;
+      display: block;
+    }
+    
+    .promedio-cauce {
+      background-color: var(--fondo-tarjeta);
+      border-radius: 8px;
+      padding: 12px;
+      margin-top: 12px;
+      text-align: center;
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+    }
+    
+    .promedio-valor {
+      font-size: 22px;
+      font-weight: bold;
+      color: var(--color-promedio);
+      margin: 6px 0;
+    }
+    
+    .promedio-etiqueta {
+      font-size: 14px;
+      color: var(--texto-secundario);
     }
     
     .footer {
       text-align: center;
-      margin-top: 2rem;
-      font-size: 0.8rem;
+      margin-top: auto;
+      padding-top: 15px;
+      font-size: 11px;
       color: var(--texto-secundario);
-    }
-    
-    @media (max-width: 600px) {
-      .grid-estaciones {
-        grid-template-columns: 1fr;
-      }
     }
   </style>
 </head>
@@ -138,19 +181,21 @@
     </div>
     
     <div class="selector-tiempo">
-      <button class="active" data-horas="24">24 horas</button>
-      <button data-horas="48">48 horas</button>
-      <button data-horas="72">72 horas</button>
-      <button data-horas="168">Semanal</button>
-      <button data-horas="720">Mensual</button>
+      <button class="active" data-horas="24">24h</button>
+      <button data-horas="48">48h</button>
+      <button data-horas="72">72h</button>
     </div>
     
     <div class="grid-estaciones">
       <!-- Estación Pilar (Aguas Arriba) -->
       <div class="tarjeta-estacion">
+        <div class="temperatura-actual">
+          <i class="fas fa-thermometer-half"></i>
+          <span id="temp-pilar">--°C</span>
+        </div>
         <div class="nombre-estacion">
           <i class="fas fa-arrow-up"></i>
-          <span>JC Paz - Pilar (cauce alto)</span>
+          <span>Pilar (cauce alto)</span>
         </div>
         
         <div class="dato-meteo">
@@ -158,11 +203,18 @@
           <div class="dato-etiqueta">Lluvia acumulada</div>
         </div>
         
-        <div class="actualizacion" id="actualizacion-pilar">Actualizando...</div>
+        <div class="actualizacion">
+          <span id="actualizacion-pilar">Actualizando...</span>
+          <span class="fecha-actualizacion" id="fecha-pilar"></span>
+        </div>
       </div>
       
       <!-- Estación Del Viso (Aguas Medias) -->
       <div class="tarjeta-estacion">
+        <div class="temperatura-actual">
+          <i class="fas fa-thermometer-half"></i>
+          <span id="temp-delviso">--°C</span>
+        </div>
         <div class="nombre-estacion">
           <i class="fas fa-arrows-alt-h"></i>
           <span>Del Viso (cauce medio)</span>
@@ -173,14 +225,21 @@
           <div class="dato-etiqueta">Lluvia acumulada</div>
         </div>
         
-        <div class="actualizacion" id="actualizacion-delviso">Actualizando...</div>
+        <div class="actualizacion">
+          <span id="actualizacion-delviso">Actualizando...</span>
+          <span class="fecha-actualizacion" id="fecha-delviso"></span>
+        </div>
       </div>
       
       <!-- Estación Maschwitz (Aguas Abajo) -->
       <div class="tarjeta-estacion">
+        <div class="temperatura-actual">
+          <i class="fas fa-thermometer-half"></i>
+          <span id="temp-maschwitz">--°C</span>
+        </div>
         <div class="nombre-estacion">
           <i class="fas fa-arrow-down"></i>
-          <span>Maschwitz (cauce bajo) </span>
+          <span>Maschwitz (cauce bajo)</span>
         </div>
         
         <div class="dato-meteo">
@@ -188,14 +247,21 @@
           <div class="dato-etiqueta">Lluvia acumulada</div>
         </div>
         
-        <div class="actualizacion" id="actualizacion-maschwitz">Actualizando...</div>
+        <div class="actualizacion">
+          <span id="actualizacion-maschwitz">Actualizando...</span>
+          <span class="fecha-actualizacion" id="fecha-maschwitz"></span>
+        </div>
       </div>
     </div>
     
-    <div class="footer">
-      <p>Actualización automática cada 10 minutos</p>
-      <p>Datos guardados en Google Sheets para historial</p>
+    <!-- Sección de promedio -->
+    <div class="promedio-cauce">
+      <div class="promedio-etiqueta">Promedio de agua sobre el cauce total</div>
+      <div class="promedio-valor" id="promedio-lluvia">-- mm</div>
+      <div class="actualizacion" id="actualizacion-promedio">Actualizando...</div>
     </div>
+    
+    <div class="footer">Creado por guardianesarroyosba © 🇦🇷 | Actualizado: <span id="update-time">--:--</span></div>
   </div>
 
   <script>
@@ -205,25 +271,32 @@
         id: "IPILAR83",
         nombre: "Pilar (cauce arriba)",
         elementoLluvia: "lluvia-pilar",
-        elementoActualizacion: "actualizacion-pilar"
+        elementoActualizacion: "actualizacion-pilar",
+        elementoTemperatura: "temp-pilar",
+        elementoFecha: "fecha-pilar"
       },
       delviso: {
         id: "IDELVI4",
         nombre: "Del Viso (cauce medio)",
         elementoLluvia: "lluvia-delviso",
-        elementoActualizacion: "actualizacion-delviso"
+        elementoActualizacion: "actualizacion-delviso",
+        elementoTemperatura: "temp-delviso",
+        elementoFecha: "fecha-delviso"
       },
       maschwitz: {
         id: "IINGEN19",
         nombre: "Maschwitz (cauce bajo)",
         elementoLluvia: "lluvia-maschwitz",
-        elementoActualizacion: "actualizacion-maschwitz"
+        elementoActualizacion: "actualizacion-maschwitz",
+        elementoTemperatura: "temp-maschwitz",
+        elementoFecha: "fecha-maschwitz"
       }
     };
     
     const apiKey = "6532d6454b8aa370768e63d6ba5a832e";
-    const intervaloActualizacion = 10 * 60 * 1000; // 5 minutos
+    const intervaloActualizacion = 10 * 60 * 1000; // 10 minutos
     let horasSeleccionadas = 24;
+    let ultimosDatos = {};
     
     // Función para obtener lluvia acumulada
     async function obtenerLluviaAcumulada(idEstacion, horas) {
@@ -257,28 +330,71 @@
       };
     }
     
-    // Función para actualizar los datos
-    async function actualizarDatos() {
-      for (const [key, estacion] of Object.entries(estaciones)) {
-        const { valor, actualizacion } = await obtenerLluviaAcumulada(estacion.id, horasSeleccionadas);
-        
-        document.getElementById(estacion.elementoLluvia).textContent = `${valor} mm`;
-        document.getElementById(estacion.elementoActualizacion).textContent = 
-          `Actualizado: ${new Date(actualizacion).toLocaleTimeString('es-AR', {hour: '2-digit', minute:'2-digit'})}`;
-        
-        // Guardar en Google Sheets (opcional)
-        if (valor !== "--") {
-          guardarEnGoogleSheets(estacion.id, valor, horasSeleccionadas);
-        }
+    async function obtenerDatosActuales(idEstacion) {
+      try {
+        const response = await fetch(`https://api.weather.com/v2/pws/observations/current?stationId=${idEstacion}&format=json&units=m&apiKey=${apiKey}`);
+        const data = await response.json();
+        return data.observations[0];
+      } catch (error) {
+        console.error(`Error obteniendo datos actuales de ${idEstacion}:`, error);
+        return null;
       }
     }
     
-    // Función para guardar en Google Sheets (requiere configuración adicional)
-    function guardarEnGoogleSheets(idEstacion, lluvia, horas) {
-      // Esta función requiere que configures un Google Apps Script
-      // como se explica más abajo
-      console.log(`Registrando: ${idEstacion} - ${lluvia}mm en ${horas}h`);
-      // Implementación real requeriría una URL de Web App
+    function formatearFecha(fecha) {
+      if (!fecha) return "";
+      const dia = fecha.getDate().toString().padStart(2, '0');
+      const mes = (fecha.getMonth() + 1).toString().padStart(2, '0');
+      const año = fecha.getFullYear().toString().slice(-2);
+      return `${dia}/${mes}/${año}`;
+    }
+    
+    function calcularPromedio() {
+      const valores = Object.values(ultimosDatos).filter(val => val !== "--");
+      
+      if (valores.length === 0) {
+        return "--";
+      }
+      
+      const suma = valores.reduce((total, val) => total + parseFloat(val), 0);
+      return (suma / valores.length).toFixed(1);
+    }
+    
+    async function actualizarDatos() {
+      const actualizaciones = [];
+      
+      for (const [key, estacion] of Object.entries(estaciones)) {
+        // Obtener datos actuales (temperatura)
+        const datosActuales = await obtenerDatosActuales(estacion.id);
+        const temperatura = datosActuales?.metric.temp ?? "--";
+        
+        // Obtener lluvia acumulada
+        const lluvia = await obtenerLluviaAcumulada(estacion.id, horasSeleccionadas);
+        
+        // Actualizar UI
+        document.getElementById(estacion.elementoLluvia).textContent = `${lluvia.valor} mm`;
+        document.getElementById(estacion.elementoTemperatura).textContent = `${temperatura}°C`;
+        document.getElementById(estacion.elementoActualizacion).textContent = 
+          `Actualizado: ${new Date(lluvia.actualizacion).toLocaleTimeString('es-AR', {hour: '2-digit', minute:'2-digit'})}`;
+        document.getElementById(estacion.elementoFecha).textContent = 
+          formatearFecha(new Date(lluvia.actualizacion));
+        
+        ultimosDatos[key] = lluvia.valor;
+        actualizaciones.push(new Date(lluvia.actualizacion));
+      }
+      
+      // Actualizar promedio
+      const promedio = calcularPromedio();
+      document.getElementById('promedio-lluvia').textContent = `${promedio} mm`;
+      
+      // Actualizar hora de actualización del promedio
+      const ultimaActualizacion = new Date(Math.max(...actualizaciones.filter(d => d instanceof Date)));
+      document.getElementById('actualizacion-promedio').textContent = 
+        `Actualizado: ${ultimaActualizacion.toLocaleTimeString('es-AR', {hour: '2-digit', minute:'2-digit'})}`;
+      
+      // Actualizar pie de página
+      document.getElementById('update-time').textContent = 
+        new Date().toLocaleTimeString('es-AR', {hour: '2-digit', minute:'2-digit'});
     }
     
     // Selector de tiempo
