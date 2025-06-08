@@ -10,7 +10,7 @@
 
 ## 📖 Descripción
 
-**Monitor de Lluvias** es una aplicación web que unifica en una sola vista los datos de tres estaciones meteorológicas distribuidas a lo largo del **Arroyo Pinazo-Escobar**, permitiendo interpretar en tiempo real **dónde llovió más** dentro de la cuenca.
+**Monitor de Lluvias** es una aplicación web que unifica en una sola vista los datos de seis (6) estaciones meteorológicas cada 15' distribuidas a lo largo del **Arroyo Pinazo-Escobar**, permitiendo interpretar en tiempo real **dónde llovió más** dentro de la cuenca.
 
 Esta visualización ayuda a anticipar posibles crecidas cuando se detectan precipitaciones intensas **aguas arriba**, ya que el sistema fluvial responde con inercia hidrológica a lo largo de varias horas.
 
@@ -30,9 +30,9 @@ La app fue creada por el colectivo **guardianesarroyosba** para fortalecer el mo
 
 ## 🧰 Características
 
-- 🔁 Consulta dinámica de lluvia acumulada en 6, 12, 24 y 48 horas.  
-- 🌐 Tres estaciones meteorológicas sincronizadas: aguas arriba, zona media, y zona baja.  
-- 📊 Comparaciones visuales rápidas para interpretar distribución de lluvias.  
+ 🔁 Consulta dinámica de lluvia acumulada en 24, 48 y 72 horas.  
+- 🌐 Seis (6) estaciones meteorológicas sincronizadas cada 15': aguas arriba, zona media, y zona baja.  
+- 📊 Comparaciones visuales rápidas para interpretar distribución de lluvias. Tooltips de localidades 
 - 🔎 Útil para anticipar posibles crecidas al detectar mayores precipitaciones en la cuenca alta.  
 - 🎯 Diseño minimalista y responsivo, ideal para celular.  
 
