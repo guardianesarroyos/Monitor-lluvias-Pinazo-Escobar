@@ -1,3 +1,4 @@
+<!-- Reemplaza todo tu HTML por esto -->
 <!DOCTYPE html>
 <html lang="es">
 <head>
@@ -102,22 +103,23 @@
     .medio { top: 42%; border: 2px solid var(--color-medio); }
     .bajo { top: 71%; border: 2px solid var(--color-bajo); }
 
+    .info-wrapper {
+      position: relative;
+      float: right;
+    }
+
     .info-icon {
-      position: absolute;
-      right: -22px;
-      top: 50%;
-      transform: translateY(-50%);
       font-size: 18px;
       color: var(--texto-claro);
       cursor: pointer;
+      margin-left: 8px;
     }
 
     .tooltip-text {
       display: none;
       position: absolute;
-      top: 50%;
-      left: 110%;
-      transform: translateY(-50%);
+      top: -10px;
+      right: 110%;
       background-color: #333;
       color: #fff;
       padding: 8px;
@@ -128,12 +130,7 @@
       text-align: left;
     }
 
-    .info-wrapper {
-      position: relative;
-      display: inline-block;
-    }
-
-    .info-wrapper:hover .tooltip-text {
+    .tooltip-text.visible {
       display: block;
     }
 
@@ -142,6 +139,12 @@
       font-size: 12px;
       color: #999;
       margin-top: 12px;
+    }
+
+    .creditos {
+      font-size: 12px;
+      color: #777;
+      margin-top: 6px;
     }
   </style>
 </head>
@@ -160,8 +163,8 @@
       <div class="burbuja alto">
         CUENCA ALTA
         <div class="info-wrapper">
-          <i class="fas fa-info-circle info-icon"></i>
-          <div class="tooltip-text">
+          <i class="fas fa-info-circle info-icon" data-tooltip="tooltip-alto"></i>
+          <div class="tooltip-text" id="tooltip-alto">
             Estaciones: La Lonja (PILAR), Boeros (DEL VISO)
           </div>
         </div>
@@ -172,8 +175,8 @@
       <div class="burbuja medio">
         CUENCA MEDIA
         <div class="info-wrapper">
-          <i class="fas fa-info-circle info-icon"></i>
-          <div class="tooltip-text">
+          <i class="fas fa-info-circle info-icon" data-tooltip="tooltip-medio"></i>
+          <div class="tooltip-text" id="tooltip-medio">
             Estaciones: Acacias Blancas, Palmer's (Ing.MASCHWITZ)
           </div>
         </div>
@@ -184,8 +187,8 @@
       <div class="burbuja bajo">
         CUENCA BAJA
         <div class="info-wrapper">
-          <i class="fas fa-info-circle info-icon"></i>
-          <div class="tooltip-text">
+          <i class="fas fa-info-circle info-icon" data-tooltip="tooltip-bajo"></i>
+          <div class="tooltip-text" id="tooltip-bajo">
             Estaciones: Santa Isabel, Puertos (ESCOBAR)
           </div>
         </div>
@@ -196,6 +199,9 @@
 
     <div class="footer">
       Monitor de Lluvias | Actualizado: <span id="hora-update">--:--</span>
+    </div>
+    <div class="creditos">
+      creado por guardianesarroyosba © – 🇦🇷 Ing. Maschwitz
     </div>
   </div>
 
@@ -218,7 +224,6 @@
         const ahora = new Date();
         const inicio = new Date(ahora);
         inicio.setHours(ahora.getHours() - horas);
-
         const fechaInicio = inicio.toISOString().split('T')[0];
 
         const lluviaURL = `https://api.weather.com/v2/pws/history/hourly?stationId=${idEstacion}&format=json&units=m&apiKey=${apiKey}&startDate=${fechaInicio}`;
@@ -279,6 +284,14 @@
         btn.classList.add('active');
         horasSeleccionadas = parseInt(btn.textContent);
         actualizarDatos();
+      });
+    });
+
+    document.querySelectorAll('.info-icon').forEach(icon => {
+      icon.addEventListener('click', (e) => {
+        const tooltipId = e.currentTarget.dataset.tooltip;
+        const tooltip = document.getElementById(tooltipId);
+        tooltip.classList.toggle('visible');
       });
     });
 
