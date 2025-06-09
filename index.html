@@ -1,4 +1,4 @@
-<<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="es">
 <head>
   <meta charset="UTF-8" />
@@ -19,28 +19,39 @@
     body {
       margin: 0;
       padding: 0;
-      background-color: var(--color-fondo);
+      background: url('grafica-arroyo_clean.png') no-repeat center center fixed;
+      background-size: cover;
       font-family: 'Segoe UI', sans-serif;
       color: var(--texto-claro);
+      min-height: 100vh;
     }
 
     .contenedor {
-      max-width: 420px;
-      margin: 0 auto;
-      padding: 10px;
+      width: 100%;
+      height: 100vh;
+      padding: 20px;
       text-align: center;
+      display: flex;
+      flex-direction: column;
+      background-color: rgba(0, 0, 0, 0.5); /* Fondo semi-transparente para mejorar legibilidad */
+    }
+
+    .header {
+      margin-bottom: 10px;
     }
 
     .titulo-principal {
-      font-size: 20px;
+      font-size: 22px;
       font-weight: bold;
       margin-bottom: 4px;
+      text-shadow: 0 2px 4px rgba(0,0,0,0.8);
     }
 
     .subtitulo {
-      font-size: 14px;
+      font-size: 16px;
       color: var(--color-naranja);
       margin-bottom: 12px;
+      text-shadow: 0 2px 4px rgba(0,0,0,0.8);
     }
 
     .selector-tiempo {
@@ -48,13 +59,14 @@
     }
 
     .selector-tiempo button {
-      background-color: #333;
+      background-color: rgba(51, 51, 51, 0.8);
       color: white;
       border: none;
-      padding: 6px 12px;
+      padding: 8px 16px;
       margin: 0 4px;
-      border-radius: 4px;
+      border-radius: 6px;
       cursor: pointer;
+      font-size: 14px;
     }
 
     .selector-tiempo button.active {
@@ -63,26 +75,24 @@
 
     .grafica-container {
       position: relative;
-      width: 100%;
-      padding-top: 180%;
-      background-image: url('grafica-arroyo_clean.png');
-      background-size: cover;
-      background-position: center top;
+      flex-grow: 1;
+      margin: 10px 0;
       border-radius: 12px;
       overflow: hidden;
-      margin-top: 10px;
     }
 
     .burbuja {
       position: absolute;
-      width: 290px;
+      width: 80%;
+      max-width: 300px;
       padding: 12px;
       text-align: left;
       border-radius: 10px;
       background-color: rgba(0,0,0,0.65);
       font-weight: bold;
       box-shadow: 0 2px 6px rgba(0,0,0,0.3);
-      left: 10%;
+      left: 50%;
+      transform: translateX(-50%);
     }
 
     .burbuja span.valor {
@@ -99,9 +109,9 @@
       text-align: right;
     }
 
-    .alto { top: 15%; border: 2px solid var(--color-alto); }
-    .medio { top: 42%; border: 2px solid var(--color-medio); }
-    .bajo { top: 71%; border: 2px solid var(--color-bajo); }
+    .alto { top: 7%; border: 2px solid var(--color-alto); }
+    .medio { top: 34%; border: 2px solid var(--color-medio); }
+    .bajo { top: 64%; border: 2px solid var(--color-bajo); }
 
     .info-wrapper {
       position: relative;
@@ -137,21 +147,25 @@
     .footer {
       text-align: center;
       font-size: 12px;
-      color: #999;
-      margin-top: 12px;
+      color: #fff;
+      margin-top: auto;
+      padding-bottom: 10px;
+      text-shadow: 0 1px 3px rgba(0,0,0,0.8);
     }
 
     .creditos {
       font-size: 12px;
-      color: #777;
+      color: #ccc;
       margin-top: 6px;
     }
   </style>
 </head>
 <body>
   <div class="contenedor">
-    <div class="titulo-principal">Arroyo Pinazo-Escobar</div>
-    <div class="subtitulo">Monitor de lluvias sobre cuenca</div>
+    <div class="header">
+      <div class="titulo-principal">Arroyo Pinazo-Escobar</div>
+      <div class="subtitulo">Monitor de lluvias sobre cuenca</div>
+    </div>
 
     <div class="selector-tiempo">
       <button class="active">24h</button>
