@@ -14,7 +14,6 @@
       --texto-claro: #f5f5f5;
       --color-naranja: #ffa726;
     }
-
     * { box-sizing: border-box; }
     body {
       margin: 0;
@@ -25,7 +24,6 @@
       color: var(--texto-claro);
       min-height: 100vh;
     }
-
     .contenedor {
       width: 100%;
       height: 100vh;
@@ -33,31 +31,24 @@
       text-align: center;
       display: flex;
       flex-direction: column;
-      background-color: rgba(0, 0, 0, 0.5); /* Fondo semi-transparente para mejorar legibilidad */
+      background-color: rgba(0, 0, 0, 0.5);
     }
-
-    .header {
-      margin-bottom: 10px;
-    }
-
+    .header { margin-bottom: 10px; }
     .titulo-principal {
       font-size: 22px;
       font-weight: bold;
       margin-bottom: 4px;
       text-shadow: 0 2px 4px rgba(0,0,0,0.8);
     }
-
     .subtitulo {
       font-size: 16px;
       color: var(--color-naranja);
       margin-bottom: 12px;
       text-shadow: 0 2px 4px rgba(0,0,0,0.8);
     }
-
     .selector-tiempo {
       margin: 10px 0;
     }
-
     .selector-tiempo button {
       background-color: rgba(51, 51, 51, 0.8);
       color: white;
@@ -68,11 +59,9 @@
       cursor: pointer;
       font-size: 14px;
     }
-
     .selector-tiempo button.active {
       background-color: var(--color-alto);
     }
-
     .grafica-container {
       position: relative;
       flex-grow: 1;
@@ -80,7 +69,6 @@
       border-radius: 12px;
       overflow: hidden;
     }
-
     .burbuja {
       position: absolute;
       width: 80%;
@@ -94,37 +82,13 @@
       left: 50%;
       transform: translateX(-50%);
     }
-
-    .burbuja span.valor {
-      font-size: 24px;
-      display: block;
-      margin-top: 5px;
-    }
-
-    .burbuja span.temp {
-      font-size: 14px;
-      display: block;
-      color: #ccc;
-      margin-top: 4px;
-      text-align: right;
-    }
-
+    .burbuja span.valor { font-size: 24px; display: block; margin-top: 5px; }
+    .burbuja span.temp { font-size: 14px; display: block; color: #ccc; margin-top: 4px; text-align: right; }
     .alto { top: 7%; border: 2px solid var(--color-alto); }
     .medio { top: 34%; border: 2px solid var(--color-medio); }
     .bajo { top: 64%; border: 2px solid var(--color-bajo); }
-
-    .info-wrapper {
-      position: relative;
-      float: right;
-    }
-
-    .info-icon {
-      font-size: 18px;
-      color: var(--texto-claro);
-      cursor: pointer;
-      margin-left: 8px;
-    }
-
+    .info-wrapper { position: relative; float: right; }
+    .info-icon { font-size: 18px; color: var(--texto-claro); cursor: pointer; margin-left: 8px; }
     .tooltip-text {
       display: none;
       position: absolute;
@@ -139,11 +103,7 @@
       z-index: 10;
       text-align: left;
     }
-
-    .tooltip-text.visible {
-      display: block;
-    }
-
+    .tooltip-text.visible { display: block; }
     .footer {
       text-align: center;
       font-size: 12px;
@@ -152,7 +112,6 @@
       padding-bottom: 10px;
       text-shadow: 0 1px 3px rgba(0,0,0,0.8);
     }
-
     .creditos {
       font-size: 12px;
       color: #ccc;
@@ -166,51 +125,40 @@
       <div class="titulo-principal">Arroyo Pinazo-Escobar</div>
       <div class="subtitulo">Monitor de lluvias sobre cuenca</div>
     </div>
-
     <div class="selector-tiempo">
-      <button class="active">24h</button>
-      <button>48h</button>
-      <button>72h</button>
+      <button class="active" data-horas="24">24h</button>
+      <button data-horas="48">48h</button>
+      <button data-horas="72">72h</button>
     </div>
-
     <div class="grafica-container">
       <div class="burbuja alto">
         CUENCA ALTA
         <div class="info-wrapper">
           <i class="fas fa-info-circle info-icon" data-tooltip="tooltip-alto"></i>
-          <div class="tooltip-text" id="tooltip-alto">
-            Estaciones: La Lonja (PILAR), Boeros (DEL VISO)
-          </div>
+          <div class="tooltip-text" id="tooltip-alto">Estaciones: La Lonja (PILAR), Boeros (DEL VISO)</div>
         </div>
         <span class="valor" id="lluvia-alto">-- mm</span>
         <span class="temp" id="temp-alto">Temp: --°C</span>
       </div>
-
       <div class="burbuja medio">
         CUENCA MEDIA
         <div class="info-wrapper">
           <i class="fas fa-info-circle info-icon" data-tooltip="tooltip-medio"></i>
-          <div class="tooltip-text" id="tooltip-medio">
-            Estaciones: Acacias Blancas, Palmer's (Ing.MASCHWITZ)
-          </div>
+          <div class="tooltip-text" id="tooltip-medio">Estaciones: Acacias Blancas, Palmer's (Ing.MASCHWITZ)</div>
         </div>
         <span class="valor" id="lluvia-medio">-- mm</span>
         <span class="temp" id="temp-medio">Temp: --°C</span>
       </div>
-
       <div class="burbuja bajo">
         CUENCA BAJA
         <div class="info-wrapper">
           <i class="fas fa-info-circle info-icon" data-tooltip="tooltip-bajo"></i>
-          <div class="tooltip-text" id="tooltip-bajo">
-            Estaciones: Santa Isabel, Puertos (ESCOBAR)
-          </div>
+          <div class="tooltip-text" id="tooltip-bajo">Estaciones: Santa Isabel, Puertos (ESCOBAR)</div>
         </div>
         <span class="valor" id="lluvia-bajo">-- mm</span>
         <span class="temp" id="temp-bajo">Temp: --°C</span>
       </div>
     </div>
-
     <div class="footer">
       Monitor de Lluvias | Actualizado: <span id="hora-update">--:--</span>
     </div>
@@ -218,7 +166,6 @@
       creado por guardianesarroyosba © – 🇦🇷 Ing. Maschwitz
     </div>
   </div>
-
   <script>
     const apiKey = "6532d6454b8aa370768e63d6ba5a832e";
     const estaciones = {
@@ -238,13 +185,18 @@
         const ahora = new Date();
         const inicio = new Date(ahora);
         inicio.setHours(ahora.getHours() - horas);
-        const fechaInicio = inicio.toISOString().split('T')[0];
 
-        const lluviaURL = `https://api.weather.com/v2/pws/history/hourly?stationId=${idEstacion}&format=json&units=m&apiKey=${apiKey}&startDate=${fechaInicio}`;
+        const fechaInicio = inicio.toISOString().split("T")[0].replace(/-/g, "");
+        const fechaFin = ahora.toISOString().split("T")[0].replace(/-/g, "");
+
+        const lluviaURL = `https://api.weather.com/v2/pws/history/hourly?stationId=${idEstacion}&format=json&units=m&apiKey=${apiKey}&startDate=${fechaInicio}&endDate=${fechaFin}`;
         const resLluvia = await fetch(lluviaURL);
         const datosLluvia = await resLluvia.json();
-        if (datosLluvia.observations?.length > 0) {
-          resultados.lluvia = datosLluvia.observations.reduce((acc, obs) => acc + (obs.metric.precipTotal || 0), 0).toFixed(1);
+
+        if (datosLluvia.observations?.length > 1) {
+          const primera = datosLluvia.observations[0].metric?.precipTotal || 0;
+          const ultima = datosLluvia.observations.at(-1).metric?.precipTotal || 0;
+          resultados.lluvia = Math.max(ultima - primera, 0).toFixed(1);
         }
 
         const tempURL = `https://api.weather.com/v2/pws/observations/current?stationId=${idEstacion}&format=json&units=m&apiKey=${apiKey}`;
@@ -259,11 +211,7 @@
     }
 
     async function actualizarDatos() {
-      const segmentos = {
-        alto: { lluvia: [], temp: [] },
-        medio: { lluvia: [], temp: [] },
-        bajo: { lluvia: [], temp: [] }
-      };
+      const segmentos = { alto: { lluvia: [], temp: [] }, medio: { lluvia: [], temp: [] }, bajo: { lluvia: [], temp: [] } };
 
       for (const [clave, est] of Object.entries(estaciones)) {
         const datos = await obtenerDatos(est.id, horasSeleccionadas);
@@ -296,7 +244,7 @@
       btn.addEventListener('click', () => {
         document.querySelectorAll('.selector-tiempo button').forEach(b => b.classList.remove('active'));
         btn.classList.add('active');
-        horasSeleccionadas = parseInt(btn.textContent);
+        horasSeleccionadas = parseInt(btn.dataset.horas);
         actualizarDatos();
       });
     });
