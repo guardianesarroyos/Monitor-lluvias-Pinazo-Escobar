@@ -117,6 +117,10 @@
       color: #ccc;
       margin-top: 6px;
     }
+    .loading {
+      color: #aaa;
+      font-style: italic;
+    }
   </style>
 </head>
 <body>
@@ -161,6 +165,7 @@
     </div>
     <div class="footer">
       Monitor de Lluvias | Actualizado: <span id="hora-update">--:--</span>
+      <span id="ultimo-periodo" style="font-style: italic; color: #aaa;"></span>
     </div>
     <div class="creditos">
       creado por guardianesarroyosba © – 🇦🇷 Ing. Maschwitz
@@ -178,57 +183,105 @@
     };
 
     let horasSeleccionadas = 24;
+    let ultimaActualizacion = null;
 
     async function obtenerDatos(idEstacion, horas) {
-      const resultados = { lluvia: "--", temp: "--" };
+      const resultados = { lluvia: 0, temp: "--" };
       try {
         const ahora = new Date();
-        const inicio = new Date(ahora);
-        inicio.setHours(ahora.getHours() - horas);
+        const inicio = new Date(ahora.getTime() - horas * 60 * 60 * 1000);
+        
+        // Formatear fechas correctamente
+        const fechaInicio = inicio.toISOString().slice(0, 10).replace(/-/g, "");
+        const fechaFin = ahora.toISOString().slice(0, 10).replace(/-/g, "");
 
-        const fechaInicio = inicio.toISOString().split("T")[0].replace(/-/g, "");
-        const fechaFin = ahora.toISOString().split("T")[0].replace(/-/g, "");
+        console.log(`Obteniendo datos para ${idEstacion} - ${horas}h (${fechaInicio} a ${fechaFin})`);
 
         const lluviaURL = `https://api.weather.com/v2/pws/history/hourly?stationId=${idEstacion}&format=json&units=m&apiKey=${apiKey}&startDate=${fechaInicio}&endDate=${fechaFin}`;
         const resLluvia = await fetch(lluviaURL);
+        
+        if (!resLluvia.ok) {
+          throw new Error(`Error HTTP: ${resLluvia.status}`);
+        }
+        
         const datosLluvia = await resLluvia.json();
 
-        if (datosLluvia.observations?.length > 1) {
-          const primera = datosLluvia.observations[0].metric?.precipTotal || 0;
-          const ultima = datosLluvia.observations.at(-1).metric?.precipTotal || 0;
-          resultados.lluvia = Math.max(ultima - primera, 0).toFixed(1);
+        if (datosLluvia.observations?.length > 0) {
+          // Obtener el valor más antiguo dentro del periodo solicitado
+          const primeraObs = datosLluvia.observations[0].metric.precipTotal;
+          // Obtener el valor más reciente
+          const ultimaObs = datosLluvia.observations[datosLluvia.observations.length - 1].metric.precipTotal;
+          
+          // Calcular diferencia asegurando que no haya reinicios
+          let diferencia = ultimaObs - primeraObs;
+          
+          if (diferencia >= 0 && diferencia < 100) { // 100mm es un límite razonable para 72h
+            resultados.lluvia = diferencia.toFixed(1);
+          } else {
+            // Si hay reinicio, sumar diferencias sucesivas
+            let total = 0;
+            for (let i = 1; i < datosLluvia.observations.length; i++) {
+              const diff = datosLluvia.observations[i].metric.precipTotal - datosLluvia.observations[i-1].metric.precipTotal;
+              if (diff >= 0 && diff < 10) { // 10mm/h es un límite razonable
+                total += diff;
+              }
+            }
+            resultados.lluvia = total.toFixed(1);
+          }
+          
+          console.log(`Datos lluvia ${idEstacion}: primeraObs=${primeraObs}, ultimaObs=${ultimaObs}, diferencia=${resultados.lluvia}`);
         }
 
+        // Temperatura (solo valor actual)
         const tempURL = `https://api.weather.com/v2/pws/observations/current?stationId=${idEstacion}&format=json&units=m&apiKey=${apiKey}`;
         const resTemp = await fetch(tempURL);
         const datosTemp = await resTemp.json();
         resultados.temp = datosTemp?.observations?.[0]?.metric?.temp?.toFixed(1) || "--";
 
       } catch (e) {
-        console.error("Error en", idEstacion, e);
+        console.error(`Error obteniendo datos de ${idEstacion} para ${horas}h:`, e);
+        resultados.lluvia = "--";
       }
       return resultados;
     }
 
     async function actualizarDatos() {
+      console.log(`Iniciando actualización para ${horasSeleccionadas}h - ${new Date().toLocaleString()}`);
+      
+      // Mostrar estado de carga
+      document.querySelectorAll('.valor').forEach(el => {
+        el.textContent = 'Cargando...';
+        el.classList.add('loading');
+      });
+      
       const segmentos = { alto: { lluvia: [], temp: [] }, medio: { lluvia: [], temp: [] }, bajo: { lluvia: [], temp: [] } };
 
+      // Obtener datos para todas las estaciones
       for (const [clave, est] of Object.entries(estaciones)) {
+        console.log(`Procesando estación ${est.id} (${clave})`);
         const datos = await obtenerDatos(est.id, horasSeleccionadas);
-        if (datos.lluvia !== "--") segmentos[est.segmento].lluvia.push(parseFloat(datos.lluvia));
-        if (datos.temp !== "--") segmentos[est.segmento].temp.push(parseFloat(datos.temp));
+        
+        if (datos.lluvia !== "--") {
+          segmentos[est.segmento].lluvia.push(parseFloat(datos.lluvia));
+        }
+        if (datos.temp !== "--") {
+          segmentos[est.segmento].temp.push(parseFloat(datos.temp));
+        }
       }
 
+      // Calcular promedios
       const promedios = {};
       ["alto", "medio", "bajo"].forEach(seg => {
         const lluvias = segmentos[seg].lluvia;
         const temps = segmentos[seg].temp;
+        
         promedios[seg] = {
           lluvia: lluvias.length ? (lluvias.reduce((a,b) => a+b, 0)/lluvias.length).toFixed(1) : "--",
           temp: temps.length ? (temps.reduce((a,b) => a+b, 0)/temps.length).toFixed(1) : "--"
         };
       });
 
+      // Actualizar UI
       document.getElementById('lluvia-alto').textContent = `${promedios.alto.lluvia} mm`;
       document.getElementById('lluvia-medio').textContent = `${promedios.medio.lluvia} mm`;
       document.getElementById('lluvia-bajo').textContent = `${promedios.bajo.lluvia} mm`;
@@ -237,14 +290,25 @@
       document.getElementById('temp-medio').textContent = `Temp: ${promedios.medio.temp}°C`;
       document.getElementById('temp-bajo').textContent = `Temp: ${promedios.bajo.temp}°C`;
 
-      document.getElementById('hora-update').textContent = new Date().toLocaleTimeString('es-AR', {hour: '2-digit', minute:'2-digit'});
+      // Quitar clase loading
+      document.querySelectorAll('.valor').forEach(el => el.classList.remove('loading'));
+      
+      // Actualizar hora y periodo
+      const ahora = new Date();
+      document.getElementById('hora-update').textContent = ahora.toLocaleTimeString('es-AR', {hour: '2-digit', minute:'2-digit'});
+      document.getElementById('ultimo-periodo').textContent = `(Últimas ${horasSeleccionadas} horas)`;
+      
+      ultimaActualizacion = ahora;
+      console.log(`Actualización completada a las ${ahora.toLocaleTimeString()}`);
     }
 
+    // Event listeners
     document.querySelectorAll('.selector-tiempo button').forEach(btn => {
       btn.addEventListener('click', () => {
         document.querySelectorAll('.selector-tiempo button').forEach(b => b.classList.remove('active'));
         btn.classList.add('active');
         horasSeleccionadas = parseInt(btn.dataset.horas);
+        console.log(`Periodo cambiado a ${horasSeleccionadas} horas`);
         actualizarDatos();
       });
     });
@@ -257,8 +321,12 @@
       });
     });
 
+    // Iniciar y programar actualizaciones
     actualizarDatos();
-    setInterval(actualizarDatos, 10 * 60 * 1000);
+    setInterval(actualizarDatos, 15 * 60 * 1000); // Actualizar cada 15 minutos
+
+    // Mostrar en consola el estado inicial
+    console.log('Monitor de lluvias iniciado. Periodo inicial: 24h');
   </script>
 </body>
 </html>
