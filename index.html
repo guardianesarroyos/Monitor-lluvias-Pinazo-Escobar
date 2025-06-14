@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Monitor de Lluvias - Arroyo Pinazo Escobar</title>
+  <title>Monitor Muletto - Arroyo Pinazo Escobar</title>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <style>
     :root {
@@ -121,13 +121,28 @@
       color: #aaa;
       font-style: italic;
     }
+    .error {
+      color: #ff6b6b;
+      animation: blink 1s infinite;
+    }
+    @keyframes blink { 50% { opacity: 0.5; } }
+    .warning {
+      background-color: rgba(255,165,0,0.2);
+      border-left: 4px solid orange;
+      padding: 8px;
+      margin: 10px 0;
+      font-size: 14px;
+    }
   </style>
 </head>
 <body>
   <div class="contenedor">
     <div class="header">
-      <div class="titulo-principal">Arroyo Pinazo-Escobar</div>
-      <div class="subtitulo">Monitor de lluvias sobre cuenca</div>
+      <div class="titulo-principal">MONITOR MULETTO</div>
+      <div class="subtitulo">Arroyo Pinazo-Escobar (versión Open-Meteo)</div>
+      <div class="warning">
+        <i class="fas fa-exclamation-triangle"></i> Modo emergencia: usando datos estimados de Open-Meteo
+      </div>
     </div>
     <div class="selector-tiempo">
       <button class="active" data-horas="24">24h</button>
@@ -139,7 +154,7 @@
         CUENCA ALTA
         <div class="info-wrapper">
           <i class="fas fa-info-circle info-icon" data-tooltip="tooltip-alto"></i>
-          <div class="tooltip-text" id="tooltip-alto">Estaciones: La Lonja (PILAR), Boeros (DEL VISO)</div>
+          <div class="tooltip-text" id="tooltip-alto">Área: Pilar, Del Viso, J.C. Paz</div>
         </div>
         <span class="valor" id="lluvia-alto">-- mm</span>
         <span class="temp" id="temp-alto">Temp: --°C</span>
@@ -148,7 +163,7 @@
         CUENCA MEDIA
         <div class="info-wrapper">
           <i class="fas fa-info-circle info-icon" data-tooltip="tooltip-medio"></i>
-          <div class="tooltip-text" id="tooltip-medio">Estaciones: Acacias Blancas, Palmer's (Ing.MASCHWITZ)</div>
+          <div class="tooltip-text" id="tooltip-medio">Área: Maquinista Savio, Ing. Maschwitz</div>
         </div>
         <span class="valor" id="lluvia-medio">-- mm</span>
         <span class="temp" id="temp-medio">Temp: --°C</span>
@@ -157,90 +172,71 @@
         CUENCA BAJA
         <div class="info-wrapper">
           <i class="fas fa-info-circle info-icon" data-tooltip="tooltip-bajo"></i>
-          <div class="tooltip-text" id="tooltip-bajo">Estaciones: Santa Isabel, Puertos (ESCOBAR)</div>
+          <div class="tooltip-text" id="tooltip-bajo">Área: Belén de Escobar</div>
         </div>
         <span class="valor" id="lluvia-bajo">-- mm</span>
         <span class="temp" id="temp-bajo">Temp: --°C</span>
       </div>
     </div>
     <div class="footer">
-      Monitor de Lluvias | Actualizado: <span id="hora-update">--:--</span>
+      Monitor Muletto | Actualizado: <span id="hora-update">--:--</span>
       <span id="ultimo-periodo" style="font-style: italic; color: #aaa;"></span>
     </div>
     <div class="creditos">
-      creado por guardianesarroyosba © – 🇦🇷 Ing. Maschwitz
+      Versión emergencia Open-Meteo © guardianesarroyosba
     </div>
   </div>
   <script>
-    const apiKey = "6532d6454b8aa370768e63d6ba5a832e";
-    const estaciones = {
-      pilar: { id: "IPILAR8", segmento: "alto" },
-      delviso: { id: "IDELVI2", segmento: "alto" },
-      acacias: { id: "IBELND11", segmento: "medio" },
-      maschwitzRuta: { id: "IINGEN19", segmento: "medio" },
-      maschwitzSI: { id: "IINGEN39", segmento: "bajo" },
-      muelles: { id: "IBELND33", segmento: "bajo" }
+    // Coordenadas de las áreas (lat, long)
+    const areas = {
+      alto: { lat: -34.47, lon: -58.91 }, // Pilar/Del Viso
+      medio: { lat: -34.39, lon: -58.75 }, // Maschwitz/Savio
+      bajo: { lat: -34.35, lon: -58.80 }  // Escobar
     };
 
     let horasSeleccionadas = 24;
     let ultimaActualizacion = null;
 
-    async function obtenerDatos(idEstacion, horas) {
+    async function obtenerDatosOpenMeteo(area, horas) {
       const resultados = { lluvia: 0, temp: "--" };
       try {
         const ahora = new Date();
         const inicio = new Date(ahora.getTime() - horas * 60 * 60 * 1000);
         
-        // Formatear fechas correctamente
-        const fechaInicio = inicio.toISOString().slice(0, 10).replace(/-/g, "");
-        const fechaFin = ahora.toISOString().slice(0, 10).replace(/-/g, "");
-
-        console.log(`Obteniendo datos para ${idEstacion} - ${horas}h (${fechaInicio} a ${fechaFin})`);
-
-        const lluviaURL = `https://api.weather.com/v2/pws/history/hourly?stationId=${idEstacion}&format=json&units=m&apiKey=${apiKey}&startDate=${fechaInicio}&endDate=${fechaFin}`;
-        const resLluvia = await fetch(lluviaURL);
+        // Formatear fechas para Open-Meteo (YYYY-MM-DD)
+        const fechaInicio = inicio.toISOString().split('T')[0];
+        const fechaFin = ahora.toISOString().split('T')[0];
         
-        if (!resLluvia.ok) {
-          throw new Error(`Error HTTP: ${resLluvia.status}`);
+        // Construir URL para Open-Meteo
+        const url = `https://api.open-meteo.com/v1/forecast?latitude=${area.lat}&longitude=${area.lon}&hourly=precipitation,temperature_2m&start_date=${fechaInicio}&end_date=${fechaFin}&timezone=auto`;
+        
+        console.log(`Consultando Open-Meteo para área ${area.lat},${area.lon}`);
+        const response = await fetch(url);
+        
+        if (!response.ok) {
+          throw new Error(`Error HTTP: ${response.status}`);
         }
         
-        const datosLluvia = await resLluvia.json();
-
-        if (datosLluvia.observations?.length > 0) {
-          // Obtener el valor más antiguo dentro del periodo solicitado
-          const primeraObs = datosLluvia.observations[0].metric.precipTotal;
-          // Obtener el valor más reciente
-          const ultimaObs = datosLluvia.observations[datosLluvia.observations.length - 1].metric.precipTotal;
-          
-          // Calcular diferencia asegurando que no haya reinicios
-          let diferencia = ultimaObs - primeraObs;
-          
-          if (diferencia >= 0 && diferencia < 100) { // 100mm es un límite razonable para 72h
-            resultados.lluvia = diferencia.toFixed(1);
-          } else {
-            // Si hay reinicio, sumar diferencias sucesivas
-            let total = 0;
-            for (let i = 1; i < datosLluvia.observations.length; i++) {
-              const diff = datosLluvia.observations[i].metric.precipTotal - datosLluvia.observations[i-1].metric.precipTotal;
-              if (diff >= 0 && diff < 10) { // 10mm/h es un límite razonable
-                total += diff;
-              }
-            }
-            resultados.lluvia = total.toFixed(1);
-          }
-          
-          console.log(`Datos lluvia ${idEstacion}: primeraObs=${primeraObs}, ultimaObs=${ultimaObs}, diferencia=${resultados.lluvia}`);
+        const data = await response.json();
+        console.log("Datos Open-Meteo recibidos:", data);
+        
+        // Procesar datos de lluvia
+        if (data.hourly && data.hourly.precipitation) {
+          const precipitaciones = data.hourly.precipitation;
+          const lluviaTotal = precipitaciones.reduce((sum, val) => sum + val, 0);
+          resultados.lluvia = lluviaTotal.toFixed(1);
         }
-
-        // Temperatura (solo valor actual)
-        const tempURL = `https://api.weather.com/v2/pws/observations/current?stationId=${idEstacion}&format=json&units=m&apiKey=${apiKey}`;
-        const resTemp = await fetch(tempURL);
-        const datosTemp = await resTemp.json();
-        resultados.temp = datosTemp?.observations?.[0]?.metric?.temp?.toFixed(1) || "--";
-
+        
+        // Procesar temperatura actual (último valor)
+        if (data.hourly && data.hourly.temperature_2m) {
+          const temps = data.hourly.temperature_2m;
+          resultados.temp = temps[temps.length - 1].toFixed(1);
+        }
+        
       } catch (e) {
-        console.error(`Error obteniendo datos de ${idEstacion} para ${horas}h:`, e);
-        resultados.lluvia = "--";
+        console.error(`Error obteniendo datos de Open-Meteo:`, e);
+        resultados.lluvia = "Error";
+        resultados.temp = "Error";
       }
       return resultados;
     }
@@ -254,44 +250,31 @@
         el.classList.add('loading');
       });
       
-      const segmentos = { alto: { lluvia: [], temp: [] }, medio: { lluvia: [], temp: [] }, bajo: { lluvia: [], temp: [] } };
-
-      // Obtener datos para todas las estaciones
-      for (const [clave, est] of Object.entries(estaciones)) {
-        console.log(`Procesando estación ${est.id} (${clave})`);
-        const datos = await obtenerDatos(est.id, horasSeleccionadas);
-        
-        if (datos.lluvia !== "--") {
-          segmentos[est.segmento].lluvia.push(parseFloat(datos.lluvia));
-        }
-        if (datos.temp !== "--") {
-          segmentos[est.segmento].temp.push(parseFloat(datos.temp));
-        }
-      }
-
-      // Calcular promedios
-      const promedios = {};
-      ["alto", "medio", "bajo"].forEach(seg => {
-        const lluvias = segmentos[seg].lluvia;
-        const temps = segmentos[seg].temp;
-        
-        promedios[seg] = {
-          lluvia: lluvias.length ? (lluvias.reduce((a,b) => a+b, 0)/lluvias.length).toFixed(1) : "--",
-          temp: temps.length ? (temps.reduce((a,b) => a+b, 0)/temps.length).toFixed(1) : "--"
-        };
-      });
+      // Obtener datos para todas las áreas
+      const [datosAlto, datosMedio, datosBajo] = await Promise.all([
+        obtenerDatosOpenMeteo(areas.alto, horasSeleccionadas),
+        obtenerDatosOpenMeteo(areas.medio, horasSeleccionadas),
+        obtenerDatosOpenMeteo(areas.bajo, horasSeleccionadas)
+      ]);
 
       // Actualizar UI
-      document.getElementById('lluvia-alto').textContent = `${promedios.alto.lluvia} mm`;
-      document.getElementById('lluvia-medio').textContent = `${promedios.medio.lluvia} mm`;
-      document.getElementById('lluvia-bajo').textContent = `${promedios.bajo.lluvia} mm`;
+      document.getElementById('lluvia-alto').textContent = `${datosAlto.lluvia} mm`;
+      document.getElementById('lluvia-medio').textContent = `${datosMedio.lluvia} mm`;
+      document.getElementById('lluvia-bajo').textContent = `${datosBajo.lluvia} mm`;
 
-      document.getElementById('temp-alto').textContent = `Temp: ${promedios.alto.temp}°C`;
-      document.getElementById('temp-medio').textContent = `Temp: ${promedios.medio.temp}°C`;
-      document.getElementById('temp-bajo').textContent = `Temp: ${promedios.bajo.temp}°C`;
+      document.getElementById('temp-alto').textContent = `Temp: ${datosAlto.temp}°C`;
+      document.getElementById('temp-medio').textContent = `Temp: ${datosMedio.temp}°C`;
+      document.getElementById('temp-bajo').textContent = `Temp: ${datosBajo.temp}°C`;
 
-      // Quitar clase loading
-      document.querySelectorAll('.valor').forEach(el => el.classList.remove('loading'));
+      // Manejo de errores visual
+      document.querySelectorAll('.valor').forEach(el => {
+        el.classList.remove('loading');
+        if (el.textContent.includes('Error')) {
+          el.classList.add('error');
+        } else {
+          el.classList.remove('error');
+        }
+      });
       
       // Actualizar hora y periodo
       const ahora = new Date();
@@ -326,7 +309,7 @@
     setInterval(actualizarDatos, 15 * 60 * 1000); // Actualizar cada 15 minutos
 
     // Mostrar en consola el estado inicial
-    console.log('Monitor de lluvias iniciado. Periodo inicial: 24h');
+    console.log('Monitor Muletto iniciado. Usando Open-Meteo como fuente de datos.');
   </script>
 </body>
 </html>
