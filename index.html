@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Monitor Muletto - Arroyo Pinazo Escobar</title>
+  <title>Arroyo Pinazo-Escobar - Monitor Versión Estable</title>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <style>
     :root {
@@ -13,6 +13,8 @@
       --color-fondo: #121212;
       --texto-claro: #f5f5f5;
       --color-naranja: #ffa726;
+      --color-estable: #ffc107;
+      --color-error: #ff6b6b;
     }
     * { box-sizing: border-box; }
     body {
@@ -82,6 +84,10 @@
       left: 50%;
       transform: translateX(-50%);
     }
+    .burbuja.error {
+      background-color: rgba(255, 107, 107, 0.1);
+      border-left: 4px solid var(--color-error);
+    }
     .burbuja span.valor { font-size: 24px; display: block; margin-top: 5px; }
     .burbuja span.temp { font-size: 14px; display: block; color: #ccc; margin-top: 4px; text-align: right; }
     .alto { top: 7%; border: 2px solid var(--color-alto); }
@@ -122,31 +128,30 @@
       font-style: italic;
     }
     .error {
-      color: #ff6b6b;
+      color: var(--color-error);
       animation: blink 1s infinite;
     }
-    @keyframes blink { 50% { opacity: 0.5; } }
-    .warning {
-      background-color: rgba(255,165,0,0.2);
-      border-left: 4px solid orange;
-      padding: 8px;
-      margin: 10px 0;
-      font-size: 14px;
+    .fuente-datos {
+      position: absolute;
+      bottom: -5px;
+      right: 5px;
+      font-size: 10px;
+      color: #888;
+      font-style: italic;
     }
+    @keyframes blink { 50% { opacity: 0.5; } }
   </style>
 </head>
 <body>
   <div class="contenedor">
     <div class="header">
-        <div class="titulo-principal">MONITOR ︎å. Pinazo-Escobar</div>
-         <div class="warning">
-        <i class="fas fa-exclamation-triangle"></i> Modo estable: estimados Open-Meteo
-      </div>
+      <div class="titulo-principal">Arroyo Pinazo-Escobar</div>
+      <div class="subtitulo">Monitor versión estable</div>
     </div>
     <div class="selector-tiempo">
-      <button class="active" data-horas="24">24h</button>
-      <button data-horas="48">48h</button>
-      <button data-horas="72">72h</button>
+      <button class="active" data-horas="24">24h (Hoy)</button>
+      <button data-horas="48">48h (Ayer+Hoy)</button>
+      <button data-horas="72">72h (3 días)</button>
     </div>
     <div class="grafica-container">
       <div class="burbuja alto">
@@ -178,120 +183,200 @@
       </div>
     </div>
     <div class="footer">
-      Monitor actualizado: <span id="hora-update">--:--</span>
+      Monitor de lluvias | Actualizado: <span id="hora-update">--:--</span>
       <span id="ultimo-periodo" style="font-style: italic; color: #aaa;"></span>
+      <div class="fuente-datos">Fuente: Open-Meteo</div>
     </div>
     <div class="creditos">
-      Versión estable © guardianesarroyosba - Ing. Maschwitz
+      Sistema de monitoreo © guardianesarroyosba – 🇦🇷 Ing. Maschwitz
     </div>
   </div>
   <script>
-    // Coordenadas de las áreas (lat, long)
-    const areas = {
+    // Configuración
+    const config = {
+      intervaloActualizacion: 15 * 60 * 1000, // 15 minutos
+      tiempoMaximoEspera: 10000 // 10 segundos máximo por actualización
+    };
+
+    // Áreas geográficas para Open-Meteo
+    const areasOpenMeteo = {
       alto: { lat: -34.47, lon: -58.91 }, // Pilar/Del Viso
       medio: { lat: -34.39, lon: -58.75 }, // Maschwitz/Savio
       bajo: { lat: -34.35, lon: -58.80 }  // Escobar
     };
 
-    let horasSeleccionadas = 24;
-    let ultimaActualizacion = null;
+    // Estado del sistema
+    let estadoSistema = {
+      horasSeleccionadas: 24
+    };
 
+    // Función para obtener datos con timeout
+    async function fetchConTimeout(url, opciones = {}, timeout = 8000) {
+      const controller = new AbortController();
+      const idTimeout = setTimeout(() => controller.abort(), timeout);
+      
+      try {
+        const respuesta = await fetch(url, {
+          ...opciones,
+          signal: controller.signal
+        });
+        clearTimeout(idTimeout);
+        return respuesta;
+      } catch (e) {
+        clearTimeout(idTimeout);
+        throw e;
+      }
+    }
+
+    // Función mejorada para obtener datos de Open-Meteo
     async function obtenerDatosOpenMeteo(area, horas) {
-      const resultados = { lluvia: 0, temp: "--" };
+      const resultados = { lluvia: "--", temp: "--" };
+      
       try {
         const ahora = new Date();
-        const inicio = new Date(ahora.getTime() - horas * 60 * 60 * 1000);
+        let fechaInicio, fechaFin;
         
-        // Formatear fechas para Open-Meteo (YYYY-MM-DD)
-        const fechaInicio = inicio.toISOString().split('T')[0];
-        const fechaFin = ahora.toISOString().split('T')[0];
-        
-        // Construir URL para Open-Meteo
-        const url = `https://api.open-meteo.com/v1/forecast?latitude=${area.lat}&longitude=${area.lon}&hourly=precipitation,temperature_2m&start_date=${fechaInicio}&end_date=${fechaFin}&timezone=auto`;
-        
-        console.log(`Consultando Open-Meteo para área ${area.lat},${area.lon}`);
-        const response = await fetch(url);
-        
-        if (!response.ok) {
-          throw new Error(`Error HTTP: ${response.status}`);
+        // Ajustamos las fechas según el período seleccionado
+        if (horas === 24) {
+          // Solo hoy desde hora 0
+          fechaInicio = new Date(ahora.getFullYear(), ahora.getMonth(), ahora.getDate());
+          fechaFin = ahora;
+        } else if (horas === 48) {
+          // Ayer completo + hoy hasta ahora
+          fechaInicio = new Date(ahora.getFullYear(), ahora.getMonth(), ahora.getDate() - 1);
+          fechaFin = ahora;
+        } else {
+          // 72h: 3 días completos (ayer, anteayer y hoy hasta ahora)
+          fechaInicio = new Date(ahora.getFullYear(), ahora.getMonth(), ahora.getDate() - 2);
+          fechaFin = ahora;
         }
+
+        // Formateamos fechas para la API
+        const fechaInicioStr = fechaInicio.toISOString().split('T')[0];
+        const fechaFinStr = fechaFin.toISOString().split('T')[0];
         
+        const url = `https://api.open-meteo.com/v1/forecast?latitude=${area.lat}&longitude=${area.lon}&hourly=precipitation,temperature_2m&start_date=${fechaInicioStr}&end_date=${fechaFinStr}&timezone=auto`;
+        
+        const response = await fetchConTimeout(url);
         const data = await response.json();
-        console.log("Datos Open-Meteo recibidos:", data);
         
-        // Procesar datos de lluvia
-        if (data.hourly && data.hourly.precipitation) {
+        // Debug: Mostrar datos recibidos
+        console.log("Datos recibidos de Open-Meteo:", data);
+        console.log("Período solicitado:", horas, "horas");
+        console.log("Fecha inicio:", fechaInicio);
+        console.log("Fecha fin:", fechaFin);
+        
+        if (data.hourly?.precipitation && data.hourly?.time) {
+          // Filtramos solo las horas que corresponden al período seleccionado
+          const horasReales = data.hourly.time.map(t => new Date(t));
           const precipitaciones = data.hourly.precipitation;
-          const lluviaTotal = precipitaciones.reduce((sum, val) => sum + val, 0);
+          
+          let lluviaTotal = 0;
+          for (let i = 0; i < horasReales.length; i++) {
+            if (horasReales[i] >= fechaInicio && horasReales[i] <= fechaFin) {
+              lluviaTotal += precipitaciones[i];
+            }
+          }
           resultados.lluvia = lluviaTotal.toFixed(1);
+          
+          // Debug: Mostrar cálculo
+          console.log("Lluvia total calculada:", lluviaTotal);
         }
         
-        // Procesar temperatura actual (último valor)
-        if (data.hourly && data.hourly.temperature_2m) {
-          const temps = data.hourly.temperature_2m;
-          resultados.temp = temps[temps.length - 1].toFixed(1);
+        if (data.hourly?.temperature_2m) {
+          resultados.temp = data.hourly.temperature_2m.slice(-1)[0].toFixed(1);
         }
         
       } catch (e) {
-        console.error(`Error obteniendo datos de Open-Meteo:`, e);
+        console.error("Error Open-Meteo:", e);
         resultados.lluvia = "Error";
         resultados.temp = "Error";
       }
+      
       return resultados;
     }
 
+    // Actualización de datos con timeout global
     async function actualizarDatos() {
-      console.log(`Iniciando actualización para ${horasSeleccionadas}h - ${new Date().toLocaleString()}`);
-      
-      // Mostrar estado de carga
-      document.querySelectorAll('.valor').forEach(el => {
-        el.textContent = 'Cargando...';
-        el.classList.add('loading');
-      });
-      
-      // Obtener datos para todas las áreas
-      const [datosAlto, datosMedio, datosBajo] = await Promise.all([
-        obtenerDatosOpenMeteo(areas.alto, horasSeleccionadas),
-        obtenerDatosOpenMeteo(areas.medio, horasSeleccionadas),
-        obtenerDatosOpenMeteo(areas.bajo, horasSeleccionadas)
-      ]);
+      try {
+        document.querySelectorAll('.valor').forEach(el => {
+          el.textContent = 'Cargando...';
+          el.classList.add('loading');
+        });
+        
+        const [alto, medio, bajo] = await Promise.all([
+          obtenerDatosOpenMeteo(areasOpenMeteo.alto, estadoSistema.horasSeleccionadas),
+          obtenerDatosOpenMeteo(areasOpenMeteo.medio, estadoSistema.horasSeleccionadas),
+          obtenerDatosOpenMeteo(areasOpenMeteo.bajo, estadoSistema.horasSeleccionadas)
+        ]);
 
-      // Actualizar UI
-      document.getElementById('lluvia-alto').textContent = `${datosAlto.lluvia} mm`;
-      document.getElementById('lluvia-medio').textContent = `${datosMedio.lluvia} mm`;
-      document.getElementById('lluvia-bajo').textContent = `${datosBajo.lluvia} mm`;
+        actualizarSegmento('alto', alto);
+        actualizarSegmento('medio', medio);
+        actualizarSegmento('bajo', bajo);
 
-      document.getElementById('temp-alto').textContent = `Temp: ${datosAlto.temp}°C`;
-      document.getElementById('temp-medio').textContent = `Temp: ${datosMedio.temp}°C`;
-      document.getElementById('temp-bajo').textContent = `Temp: ${datosBajo.temp}°C`;
-
-      // Manejo de errores visual
-      document.querySelectorAll('.valor').forEach(el => {
-        el.classList.remove('loading');
-        if (el.textContent.includes('Error')) {
-          el.classList.add('error');
+        document.getElementById('hora-update').textContent = new Date().toLocaleTimeString('es-AR', {hour: '2-digit', minute:'2-digit'});
+        
+        // Actualizar texto del periodo seleccionado
+        let periodoTexto = '';
+        if (estadoSistema.horasSeleccionadas === 24) {
+          periodoTexto = '(Hoy desde 00:00h)';
+        } else if (estadoSistema.horasSeleccionadas === 48) {
+          periodoTexto = '(Ayer completo + Hoy)';
         } else {
-          el.classList.remove('error');
+          periodoTexto = '(3 días completos)';
         }
-      });
-      
-      // Actualizar hora y periodo
-      const ahora = new Date();
-      document.getElementById('hora-update').textContent = ahora.toLocaleTimeString('es-AR', {hour: '2-digit', minute:'2-digit'});
-      document.getElementById('ultimo-periodo').textContent = `(Últimas ${horasSeleccionadas} horas)`;
-      
-      ultimaActualizacion = ahora;
-      console.log(`Actualización completada a las ${ahora.toLocaleTimeString()}`);
+        document.getElementById('ultimo-periodo').textContent = periodoTexto;
+        
+      } catch (e) {
+        console.error("Error en actualización:", e);
+        manejarFalla();
+      }
     }
 
-    // Event listeners
+    async function actualizarDatosConTimeout() {
+      const timeoutId = setTimeout(() => {
+        console.warn("Timeout global alcanzado");
+        manejarFalla();
+      }, config.tiempoMaximoEspera);
+
+      try {
+        await actualizarDatos();
+        clearTimeout(timeoutId);
+      } catch (e) {
+        clearTimeout(timeoutId);
+        manejarFalla();
+      }
+    }
+
+    function manejarFalla() {
+      console.error("Error crítico en la actualización");
+      document.querySelectorAll('.burbuja').forEach(el => el.classList.add('error'));
+    }
+
+    function actualizarSegmento(segmento, datos) {
+      const elLluvia = document.getElementById(`lluvia-${segmento}`);
+      const elTemp = document.getElementById(`temp-${segmento}`);
+      const burbuja = document.querySelector(`.burbuja.${segmento}`);
+      
+      elLluvia.textContent = `${datos.lluvia} mm`;
+      elTemp.textContent = `Temp: ${datos.temp}°C`;
+      
+      // Estilos
+      burbuja.classList.remove('error');
+      if (datos.lluvia === "Error" || datos.temp === "Error") burbuja.classList.add('error');
+      
+      // Quitar loading
+      elLluvia.classList.remove('loading');
+      elTemp.classList.remove('loading');
+    }
+
+    // Event Listeners
     document.querySelectorAll('.selector-tiempo button').forEach(btn => {
       btn.addEventListener('click', () => {
         document.querySelectorAll('.selector-tiempo button').forEach(b => b.classList.remove('active'));
         btn.classList.add('active');
-        horasSeleccionadas = parseInt(btn.dataset.horas);
-        console.log(`Periodo cambiado a ${horasSeleccionadas} horas`);
-        actualizarDatos();
+        estadoSistema.horasSeleccionadas = parseInt(btn.dataset.horas);
+        actualizarDatosConTimeout();
       });
     });
 
@@ -303,12 +388,9 @@
       });
     });
 
-    // Iniciar y programar actualizaciones
-    actualizarDatos();
-    setInterval(actualizarDatos, 15 * 60 * 1000); // Actualizar cada 15 minutos
-
-    // Mostrar en consola el estado inicial
-    console.log('Monitor Muletto iniciado. Usando Open-Meteo como fuente de datos.');
+    // Inicialización
+    setInterval(actualizarDatosConTimeout, config.intervaloActualizacion);
+    actualizarDatosConTimeout();
   </script>
 </body>
 </html>
