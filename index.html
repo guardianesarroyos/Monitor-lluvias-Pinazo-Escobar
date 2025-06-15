@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Arroyo Pinazo-Escobar - Monitor Versión Estable (Datos Crudos)</title>
+  <title>Arroyo Pinazo-Escobar - Monitor Versión Estable (Datos OW)</title>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <style>
     :root {
@@ -18,13 +18,14 @@
     }
     * { box-sizing: border-box; }
     body {
-      margin: 0;
-      padding: 0;
-      background: url(https://github.com/guardianesarroyos/Monitor-lluvias-Pinazo-Escobar/blob/main/grafica-arroyo_clean.png) no-repeat center center fixed;
-      background-size: cover;
-      font-family: 'Segoe UI', sans-serif;
-      color: var(--texto-claro);
-      min-height: 100vh;
+    margin: 0;
+    padding: 0;
+    background: url(https://raw.githubusercontent.com/guardianesarroyos/Monitor-lluvias-Pinazo-Escobar/main/grafica-arroyo_clean.png) no-repeat center center fixed;
+    background-size: cover;
+    font-family: 'Segoe UI', sans-serif;
+    color: var(--texto-claro);
+    min-height: 100vh;
+    font-variant: normal;
     }
     .contenedor {
       width: 100%;
@@ -125,7 +126,7 @@
     }
     .loading {
       color: #aaa;
-      font-style: italic;
+      font-style: regular;
     }
     .error {
       color: var(--color-error);
@@ -137,7 +138,7 @@
       right: 5px;
       font-size: 10px;
       color: #888;
-      font-style: italic;
+      font-style: normal;
     }
     @keyframes blink { 50% { opacity: 0.5; } }
   </style>
@@ -146,7 +147,7 @@
   <div class="contenedor">
     <div class="header">
       <div class="titulo-principal">Arroyo Pinazo-Escobar</div>
-      <div class="subtitulo">Monitor de Lluvias caídas</div>
+      <div class="subtitulo">Monitor de lluvias tiempo real</div>
     </div>
     <div class="selector-tiempo">
       <button class="active" data-horas="24">24h (Hoy)</button>
