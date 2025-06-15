@@ -6,7 +6,7 @@
   <title>Arroyo Pinazo-Escobar - Monitor Híbrido (Datos CRUDOS + Manuales)</title>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <style>
-    /* === ESTILOS ORIGINALES (EXACTAMENTE IGUAL) === */
+    /* === ESTILOS ORIGINALES === */
     :root {
       --color-alto: #64b5f6;
       --color-medio: #4db6ac;
@@ -129,7 +129,7 @@
       font-style: italic;
     }
     .error {
-      color: var(--color-error); /* ELIMINADO: animation: blink 1s infinite; */
+      color: var(--color-error);
     }
     .fuente-datos {
       position: absolute;
@@ -139,11 +139,9 @@
       color: #888;
       font-style: italic;
     }
-    /* ELIMINADO: @keyframes blink { 50% { opacity: 0.5; } } */
   </style>
 </head>
 <body>
-  <!-- === ESTRUCTURA ORIGINAL (EXACTAMENTE IGUAL) === -->
   <div class="contenedor">
     <div class="header">
       <div class="titulo-principal">Arroyo Pinazo-Escobar</div>
@@ -192,71 +190,96 @@
     </div>
   </div>
 
-  <!-- === SCRIPT ORIGINAL + MEJORAS HÍBRIDAS (EXACTAMENTE IGUAL) === -->
   <script>
-    // Configuración original
+    // Configuración
     const config = {
       intervaloActualizacion: 15 * 60 * 1000, // 15 minutos
-      tiempoMaximoEspera: 10000 // 10 segundos máximo por actualización
+      tiempoMaximoEspera: 10000
     };
 
-    // Áreas geográficas originales
+    // Áreas geográficas
     const areas = {
       alto: { lat: -34.455, lon: -58.859 }, // Pilar
       medio: { lat: -34.386, lon: -58.767 }, // Ing. Maschwitz
       bajo: { lat: -34.336, lon: -58.715 }  // Belén de Escobar
     };
 
-    // API Keys de OpenWeatherMap originales
+    // API Keys de OpenWeatherMap
     const apiKeys = [
       'f4d1c9e95384cf24724a8205aea60940',
       '52b3db6f3db08d7602d714b39d519d69'
     ];
     let currentApiKeyIndex = 0;
 
-    // === FUNCIÓN NUEVA: Cargar datos manuales ===
+    // Cargar datos manuales
     async function cargarDatosManuales() {
       try {
-        const response = await fetch('datos/manuales.json?t=' + new Date().getTime());
+        const response = await fetch('https://guardianesarroyos.github.io/Monitor-lluvias-Pinazo-Escobar/DATOS/manuales.json?t=' + new Date().getTime());
         if (!response.ok) return null;
-        return await response.json();
+        const json = await response.json();
+        console.log("✅ Datos manuales cargados:", json);
+        return json;
       } catch {
         return null;
       }
     }
 
-    // === FUNCIÓN ORIGINAL MODIFICADA (prioridad manual) ===
+    // Función principal de actualización
     async function actualizarDatos() {
       try {
-        // 1. Cargar datos manuales (si existen)
         const datosManuales = await cargarDatosManuales();
         const ahora = new Date();
+        const horasSeleccionadas = estadoSistema.horasSeleccionadas;
 
-        // 2. Si hay datos manuales VIGENTES (72h), usarlos y SALIR
+        // Procesar datos manuales (si existen y son vigentes)
         if (datosManuales) {
           const fechaManual = new Date(datosManuales.ultima_actualizacion);
           const horasDesdeManual = (ahora - fechaManual) / (1000 * 60 * 60);
 
           if (horasDesdeManual < 72) {
-            document.getElementById('lluvia-alto').textContent = `${datosManuales.lluvia_alto} mm`;
-            document.getElementById('lluvia-medio').textContent = `${datosManuales.lluvia_medio} mm`;
-            document.getElementById('lluvia-bajo').textContent = `${datosManuales.lluvia_bajo} mm`;
+            // Calcular lluvias según el rango seleccionado
+            let lluvias;
+            if (horasSeleccionadas === 24) {
+              lluvias = datosManuales.hoy;
+            } else if (horasSeleccionadas === 48) {
+              lluvias = {
+                lluvia_alto: datosManuales.hoy.lluvia_alto + datosManuales.ayer.lluvia_alto,
+                lluvia_medio: datosManuales.hoy.lluvia_medio + datosManuales.ayer.lluvia_medio,
+                lluvia_bajo: datosManuales.hoy.lluvia_bajo + datosManuales.ayer.lluvia_bajo
+              };
+            } else { // 72 horas (3 días)
+              lluvias = {
+                lluvia_alto: datosManuales.hoy.lluvia_alto + datosManuales.ayer.lluvia_alto + (datosManuales.antes_de_ayer?.lluvia_alto || 0),
+                lluvia_medio: datosManuales.hoy.lluvia_medio + datosManuales.ayer.lluvia_medio + (datosManuales.antes_de_ayer?.lluvia_medio || 0),
+                lluvia_bajo: datosManuales.hoy.lluvia_bajo + datosManuales.ayer.lluvia_bajo + (datosManuales.antes_de_ayer?.lluvia_bajo || 0)
+              };
+            }
+
+            document.getElementById('lluvia-alto').textContent = `${lluvias.lluvia_alto} mm`;
+            document.getElementById('lluvia-medio').textContent = `${lluvias.lluvia_medio} mm`;
+            document.getElementById('lluvia-bajo').textContent = `${lluvias.lluvia_bajo} mm`;
             document.getElementById('hora-update').textContent = fechaManual.toLocaleTimeString('es-AR');
-            return; // ¡Detiene aquí! No carga OpenWeather
           }
         }
 
-        // 3. Si no hay manuales, usar OpenWeather (código original)
+        // Cargar temperaturas desde OpenWeather (SIEMPRE)
         const [alto, medio, bajo] = await Promise.all([
-          obtenerDatosCrudos(areas.alto, estadoSistema.horasSeleccionadas),
-          obtenerDatosCrudos(areas.medio, estadoSistema.horasSeleccionadas),
-          obtenerDatosCrudos(areas.bajo, estadoSistema.horasSeleccionadas)
+          obtenerDatosCrudos(areas.alto, horasSeleccionadas),
+          obtenerDatosCrudos(areas.medio, horasSeleccionadas),
+          obtenerDatosCrudos(areas.bajo, horasSeleccionadas)
         ]);
 
-        document.getElementById('lluvia-alto').textContent = `${alto.lluvia} mm`;
-        document.getElementById('lluvia-medio').textContent = `${medio.lluvia} mm`;
-        document.getElementById('lluvia-bajo').textContent = `${bajo.lluvia} mm`;
-        document.getElementById('hora-update').textContent = ahora.toLocaleTimeString('es-AR');
+        document.getElementById('temp-alto').textContent = `Temp: ${alto.temperatura}°C`;
+        document.getElementById('temp-medio').textContent = `Temp: ${medio.temperatura}°C`;
+        document.getElementById('temp-bajo').textContent = `Temp: ${bajo.temperatura}°C`;
+
+        // Si no hay manuales o están vencidos, usar OpenWeather para lluvias
+        if (!datosManuales || (new Date() - new Date(datosManuales.ultima_actualizacion)) / (1000 * 60 * 60) >= 72) {
+          document.getElementById('lluvia-alto').textContent = `${alto.lluvia} mm`;
+          document.getElementById('lluvia-medio').textContent = `${medio.lluvia} mm`;
+          document.getElementById('lluvia-bajo').textContent = `${bajo.lluvia} mm`;
+          document.getElementById('hora-update').textContent = ahora.toLocaleTimeString('es-AR');
+        }
 
       } catch (e) {
         console.error("Error en actualización:", e);
@@ -264,12 +287,35 @@
       }
     }
 
-    // === RESTANTE DEL CÓDIGO ORIGINAL (sin cambios) ===
-    let estadoSistema = { horasSeleccionadas: 24 };
-
+    // Obtener datos de OpenWeather
     async function obtenerDatosCrudos(area, horas) {
-      // ... (función original idéntica) ...
+      try {
+        const response = await fetch(`https://api.openweathermap.org/data/2.5/onecall?lat=${area.lat}&lon=${area.lon}&exclude=minutely,hourly,daily,alerts&appid=${apiKeys[currentApiKeyIndex]}&units=metric`);
+        const data = await response.json();
+        
+        // Rotar API Key si hay error
+        if (data.cod === 401) {
+          currentApiKeyIndex = (currentApiKeyIndex + 1) % apiKeys.length;
+          return obtenerDatosCrudos(area, horas);
+        }
+
+        const ahora = new Date();
+        const lluviaTotal = data.hourly.slice(0, horas).reduce((sum, h) => sum + (h.rain?.['1h'] || 0), 0);
+        
+        console.log("✅ Datos OpenWeather:", data);
+        return {
+          lluvia: lluviaTotal.toFixed(1),
+          temperatura: data.current?.temp ? data.current.temp.toFixed(1) : "--"
+        };
+
+      } catch (e) {
+        console.error("Error al obtener datos crudos:", e);
+        return { lluvia: "--", temperatura: "--" };
+      }
     }
+
+    // Estado del sistema
+    let estadoSistema = { horasSeleccionadas: 24 };
 
     // Tooltips
     document.querySelectorAll('.info-icon').forEach(icon => {
