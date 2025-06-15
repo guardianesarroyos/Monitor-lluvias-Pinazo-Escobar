@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Arroyo Pinazo-Escobar - Monitor Versión Estable</title>
+  <title>Arroyo Pinazo-Escobar - Monitor con Correcciones</title>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <style>
     :root {
@@ -146,7 +146,7 @@
   <div class="contenedor">
     <div class="header">
       <div class="titulo-principal">Arroyo Pinazo-Escobar</div>
-      <div class="subtitulo">Monitor versión estable</div>
+      <div class="subtitulo">Monitor lluvias - versión estable</div>
     </div>
     <div class="selector-tiempo">
       <button class="active" data-horas="24">24h (Hoy)</button>
@@ -158,7 +158,7 @@
         CUENCA ALTA
         <div class="info-wrapper">
           <i class="fas fa-info-circle info-icon" data-tooltip="tooltip-alto"></i>
-          <div class="tooltip-text" id="tooltip-alto">Área: Pilar, Del Viso, J.C. Paz</div>
+          <div class="tooltip-text" id="tooltip-alto">Área Pilar, Del Viso y JC. Paz</div>
         </div>
         <span class="valor" id="lluvia-alto">-- mm</span>
         <span class="temp" id="temp-alto">Temp: --°C</span>
@@ -167,7 +167,7 @@
         CUENCA MEDIA
         <div class="info-wrapper">
           <i class="fas fa-info-circle info-icon" data-tooltip="tooltip-medio"></i>
-          <div class="tooltip-text" id="tooltip-medio">Área: Maquinista Savio, Ing. Maschwitz</div>
+          <div class="tooltip-text" id="tooltip-medio">Área Maq.Savio e Ing. Maschwitz.</div>
         </div>
         <span class="valor" id="lluvia-medio">-- mm</span>
         <span class="temp" id="temp-medio">Temp: --°C</span>
@@ -176,7 +176,7 @@
         CUENCA BAJA
         <div class="info-wrapper">
           <i class="fas fa-info-circle info-icon" data-tooltip="tooltip-bajo"></i>
-          <div class="tooltip-text" id="tooltip-bajo">Área: Belén de Escobar</div>
+          <div class="tooltip-text" id="tooltip-bajo">Área Belén de Escobar y desembocadura: ×1.78</div>
         </div>
         <span class="valor" id="lluvia-bajo">-- mm</span>
         <span class="temp" id="temp-bajo">Temp: --°C</span>
@@ -185,7 +185,7 @@
     <div class="footer">
       Monitor de lluvias | Actualizado: <span id="hora-update">--:--</span>
       <span id="ultimo-periodo" style="font-style: italic; color: #aaa;"></span>
-      <div class="fuente-datos">Fuente: Open-Meteo</div>
+      <div class="fuente-datos">Fuente: Open-Meteo con factores de corrección</div>
     </div>
     <div class="creditos">
       Sistema de monitoreo © guardianesarroyosba – 🇦🇷 Ing. Maschwitz
@@ -198,11 +198,19 @@
       tiempoMaximoEspera: 10000 // 10 segundos máximo por actualización
     };
 
+    // Factores de corrección específicos
+    const factoresCorreccion = {
+      alta: 1.64,    // Cuenca Alta (Pilar) x1.64
+      media: 1.34,   // Cuenca Media (Ing. Maschwitz) x1.34
+      baja: 1.78,    // Cuenca Baja (Belén de Escobar) x1.78
+      temperatura: 1.5 // Corrección de temperatura (+1.5°C)
+    };
+
     // Áreas geográficas para Open-Meteo
     const areasOpenMeteo = {
-      alto: { lat: -34.47, lon: -58.91 }, // Pilar/Del Viso
-      medio: { lat: -34.39, lon: -58.75 }, // Maschwitz/Savio
-      bajo: { lat: -34.35, lon: -58.80 }  // Escobar
+      alto: { lat: -34.47, lon: -58.91 }, // Pilar
+      medio: { lat: -34.39, lon: -58.75 }, // Ing. Maschwitz
+      bajo: { lat: -34.35, lon: -58.80 }  // Belén de Escobar
     };
 
     // Estado del sistema
@@ -210,64 +218,34 @@
       horasSeleccionadas: 24
     };
 
-    // Función para obtener datos con timeout
-    async function fetchConTimeout(url, opciones = {}, timeout = 8000) {
-      const controller = new AbortController();
-      const idTimeout = setTimeout(() => controller.abort(), timeout);
-      
-      try {
-        const respuesta = await fetch(url, {
-          ...opciones,
-          signal: controller.signal
-        });
-        clearTimeout(idTimeout);
-        return respuesta;
-      } catch (e) {
-        clearTimeout(idTimeout);
-        throw e;
-      }
-    }
-
-    // Función mejorada para obtener datos de Open-Meteo
-    async function obtenerDatosOpenMeteo(area, horas) {
+    // Función para obtener datos con correcciones
+    async function obtenerDatosCorregidos(area, horas, cuenca) {
       const resultados = { lluvia: "--", temp: "--" };
       
       try {
         const ahora = new Date();
         let fechaInicio, fechaFin;
         
-        // Ajustamos las fechas según el período seleccionado
         if (horas === 24) {
-          // Solo hoy desde hora 0
           fechaInicio = new Date(ahora.getFullYear(), ahora.getMonth(), ahora.getDate());
           fechaFin = ahora;
         } else if (horas === 48) {
-          // Ayer completo + hoy hasta ahora
           fechaInicio = new Date(ahora.getFullYear(), ahora.getMonth(), ahora.getDate() - 1);
           fechaFin = ahora;
         } else {
-          // 72h: 3 días completos (ayer, anteayer y hoy hasta ahora)
           fechaInicio = new Date(ahora.getFullYear(), ahora.getMonth(), ahora.getDate() - 2);
           fechaFin = ahora;
         }
 
-        // Formateamos fechas para la API
         const fechaInicioStr = fechaInicio.toISOString().split('T')[0];
         const fechaFinStr = fechaFin.toISOString().split('T')[0];
         
         const url = `https://api.open-meteo.com/v1/forecast?latitude=${area.lat}&longitude=${area.lon}&hourly=precipitation,temperature_2m&start_date=${fechaInicioStr}&end_date=${fechaFinStr}&timezone=auto`;
         
-        const response = await fetchConTimeout(url);
+        const response = await fetch(url);
         const data = await response.json();
         
-        // Debug: Mostrar datos recibidos
-        console.log("Datos recibidos de Open-Meteo:", data);
-        console.log("Período solicitado:", horas, "horas");
-        console.log("Fecha inicio:", fechaInicio);
-        console.log("Fecha fin:", fechaFin);
-        
-        if (data.hourly?.precipitation && data.hourly?.time) {
-          // Filtramos solo las horas que corresponden al período seleccionado
+        if (data.hourly?.precipitation) {
           const horasReales = data.hourly.time.map(t => new Date(t));
           const precipitaciones = data.hourly.precipitation;
           
@@ -277,14 +255,15 @@
               lluviaTotal += precipitaciones[i];
             }
           }
-          resultados.lluvia = lluviaTotal.toFixed(1);
           
-          // Debug: Mostrar cálculo
-          console.log("Lluvia total calculada:", lluviaTotal);
+          // Aplicar factor de corrección específico para lluvia
+          resultados.lluvia = (lluviaTotal * factoresCorreccion[cuenca]).toFixed(1);
         }
         
         if (data.hourly?.temperature_2m) {
-          resultados.temp = data.hourly.temperature_2m.slice(-1)[0].toFixed(1);
+          // Aplicar corrección de temperatura (+1.5°C)
+          const tempCruda = data.hourly.temperature_2m.slice(-1)[0];
+          resultados.temp = (tempCruda + factoresCorreccion.temperatura).toFixed(1);
         }
         
       } catch (e) {
@@ -296,7 +275,7 @@
       return resultados;
     }
 
-    // Actualización de datos con timeout global
+    // Actualizar y mostrar datos
     async function actualizarDatos() {
       try {
         document.querySelectorAll('.valor').forEach(el => {
@@ -305,15 +284,20 @@
         });
         
         const [alto, medio, bajo] = await Promise.all([
-          obtenerDatosOpenMeteo(areasOpenMeteo.alto, estadoSistema.horasSeleccionadas),
-          obtenerDatosOpenMeteo(areasOpenMeteo.medio, estadoSistema.horasSeleccionadas),
-          obtenerDatosOpenMeteo(areasOpenMeteo.bajo, estadoSistema.horasSeleccionadas)
+          obtenerDatosCorregidos(areasOpenMeteo.alto, estadoSistema.horasSeleccionadas, 'alta'),
+          obtenerDatosCorregidos(areasOpenMeteo.medio, estadoSistema.horasSeleccionadas, 'media'),
+          obtenerDatosCorregidos(areasOpenMeteo.bajo, estadoSistema.horasSeleccionadas, 'baja')
         ]);
 
-        actualizarSegmento('alto', alto);
-        actualizarSegmento('medio', medio);
-        actualizarSegmento('bajo', bajo);
+        // Actualizar UI con datos corregidos
+        document.getElementById('lluvia-alto').textContent = `${alto.lluvia} mm`;
+        document.getElementById('temp-alto').textContent = `Temp: ${alto.temp}°C`;
+        document.getElementById('lluvia-medio').textContent = `${medio.lluvia} mm`;
+        document.getElementById('temp-medio').textContent = `Temp: ${medio.temp}°C`;
+        document.getElementById('lluvia-bajo').textContent = `${bajo.lluvia} mm`;
+        document.getElementById('temp-bajo').textContent = `Temp: ${bajo.temp}°C`;
 
+        // Actualizar hora
         document.getElementById('hora-update').textContent = new Date().toLocaleTimeString('es-AR', {hour: '2-digit', minute:'2-digit'});
         
         // Actualizar texto del periodo seleccionado
@@ -329,45 +313,8 @@
         
       } catch (e) {
         console.error("Error en actualización:", e);
-        manejarFalla();
+        document.querySelectorAll('.burbuja').forEach(el => el.classList.add('error'));
       }
-    }
-
-    async function actualizarDatosConTimeout() {
-      const timeoutId = setTimeout(() => {
-        console.warn("Timeout global alcanzado");
-        manejarFalla();
-      }, config.tiempoMaximoEspera);
-
-      try {
-        await actualizarDatos();
-        clearTimeout(timeoutId);
-      } catch (e) {
-        clearTimeout(timeoutId);
-        manejarFalla();
-      }
-    }
-
-    function manejarFalla() {
-      console.error("Error crítico en la actualización");
-      document.querySelectorAll('.burbuja').forEach(el => el.classList.add('error'));
-    }
-
-    function actualizarSegmento(segmento, datos) {
-      const elLluvia = document.getElementById(`lluvia-${segmento}`);
-      const elTemp = document.getElementById(`temp-${segmento}`);
-      const burbuja = document.querySelector(`.burbuja.${segmento}`);
-      
-      elLluvia.textContent = `${datos.lluvia} mm`;
-      elTemp.textContent = `Temp: ${datos.temp}°C`;
-      
-      // Estilos
-      burbuja.classList.remove('error');
-      if (datos.lluvia === "Error" || datos.temp === "Error") burbuja.classList.add('error');
-      
-      // Quitar loading
-      elLluvia.classList.remove('loading');
-      elTemp.classList.remove('loading');
     }
 
     // Event Listeners
@@ -376,7 +323,7 @@
         document.querySelectorAll('.selector-tiempo button').forEach(b => b.classList.remove('active'));
         btn.classList.add('active');
         estadoSistema.horasSeleccionadas = parseInt(btn.dataset.horas);
-        actualizarDatosConTimeout();
+        actualizarDatos();
       });
     });
 
@@ -389,8 +336,8 @@
     });
 
     // Inicialización
-    setInterval(actualizarDatosConTimeout, config.intervaloActualizacion);
-    actualizarDatosConTimeout();
+    actualizarDatos();
+    setInterval(actualizarDatos, config.intervaloActualizacion);
   </script>
 </body>
 </html>
