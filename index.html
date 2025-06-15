@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Arroyo Pinazo-Escobar - Monitor con Correcciones</title>
+  <title>Arroyo Pinazo-Escobar - Monitor Versión Estable (Datos Crudos)</title>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <style>
     :root {
@@ -20,7 +20,7 @@
     body {
       margin: 0;
       padding: 0;
-      background: url('grafica-arroyo_clean.png') no-repeat center center fixed;
+      background: url('../../../../../../../../Downloads/grafica-arroyo_clean.png') no-repeat center center fixed;
       background-size: cover;
       font-family: 'Segoe UI', sans-serif;
       color: var(--texto-claro);
@@ -146,7 +146,7 @@
   <div class="contenedor">
     <div class="header">
       <div class="titulo-principal">Arroyo Pinazo-Escobar</div>
-      <div class="subtitulo">Monitor lluvias - versión estable</div>
+      <div class="subtitulo">Monitor de Lluvias caídas</div>
     </div>
     <div class="selector-tiempo">
       <button class="active" data-horas="24">24h (Hoy)</button>
@@ -158,7 +158,7 @@
         CUENCA ALTA
         <div class="info-wrapper">
           <i class="fas fa-info-circle info-icon" data-tooltip="tooltip-alto"></i>
-          <div class="tooltip-text" id="tooltip-alto">Área Pilar, Del Viso y JC. Paz</div>
+          <div class="tooltip-text" id="tooltip-alto">Área: Pilar, Del Viso, J.C. Paz</div>
         </div>
         <span class="valor" id="lluvia-alto">-- mm</span>
         <span class="temp" id="temp-alto">Temp: --°C</span>
@@ -167,7 +167,7 @@
         CUENCA MEDIA
         <div class="info-wrapper">
           <i class="fas fa-info-circle info-icon" data-tooltip="tooltip-medio"></i>
-          <div class="tooltip-text" id="tooltip-medio">Área Maq.Savio e Ing. Maschwitz.</div>
+          <div class="tooltip-text" id="tooltip-medio">Área: Maquinista Savio, Ing. Maschwitz</div>
         </div>
         <span class="valor" id="lluvia-medio">-- mm</span>
         <span class="temp" id="temp-medio">Temp: --°C</span>
@@ -176,16 +176,16 @@
         CUENCA BAJA
         <div class="info-wrapper">
           <i class="fas fa-info-circle info-icon" data-tooltip="tooltip-bajo"></i>
-          <div class="tooltip-text" id="tooltip-bajo">Área Belén de Escobar y desembocadura</div>
+          <div class="tooltip-text" id="tooltip-bajo">Área: Belén de Escobar</div>
         </div>
         <span class="valor" id="lluvia-bajo">-- mm</span>
         <span class="temp" id="temp-bajo">Temp: --°C</span>
       </div>
     </div>
     <div class="footer">
-      Monitor de lluvias | Actualizado: <span id="hora-update">--:--</span>
+      Monitor fuente OW | Actualizado: <span id="hora-update">--:--</span>
       <span id="ultimo-periodo" style="font-style: italic; color: #aaa;"></span>
-      <div class="fuente-datos">Fuente: Open-Meteo con factores de corrección</div>
+      <div class="fuente-datos">Fuente: OpenWeatherMap (Datos sin correcciones)</div>
     </div>
     <div class="creditos">
       Sistema de monitoreo © guardianesarroyosba – 🇦🇷 Ing. Maschwitz
@@ -198,76 +198,80 @@
       tiempoMaximoEspera: 10000 // 10 segundos máximo por actualización
     };
 
-    // Factores de corrección específicos
-    const factoresCorreccion = {
-      alta: 1.64,    // Cuenca Alta (Pilar) x1.64
-      media: 1.34,   // Cuenca Media (Ing. Maschwitz) x1.34
-      baja: 1.78,    // Cuenca Baja (Belén de Escobar) x1.78
-      temperatura: 0.0 // Corrección de temperatura (+1.5°C)
+    // Áreas geográficas con las coordenadas exactas que proporcionaste
+    const areas = {
+      alto: { lat: -34.455, lon: -58.859 }, // Pilar
+      medio: { lat: -34.386, lon: -58.767 }, // Ing. Maschwitz
+      bajo: { lat: -34.336, lon: -58.715 }  // Belén de Escobar
     };
 
-    // Áreas geográficas para Open-Meteo
-    const areasOpenMeteo = {
-      alto: { lat: -34.47, lon: -58.91 }, // Pilar
-      medio: { lat: -34.39, lon: -58.75 }, // Ing. Maschwitz
-      bajo: { lat: -34.35, lon: -58.80 }  // Belén de Escobar
-    };
+    // API Keys de OpenWeatherMap (las que proporcionaste)
+    const apiKeys = [
+      'f4d1c9e95384cf24724a8205aea60940',
+      '52b3db6f3db08d7602d714b39d519d69'
+    ];
+    let currentApiKeyIndex = 0;
 
     // Estado del sistema
     let estadoSistema = {
       horasSeleccionadas: 24
     };
 
-    // Función para obtener datos con correcciones
-    async function obtenerDatosCorregidos(area, horas, cuenca) {
+    // Función para obtener datos CRUDOS de OpenWeatherMap (versión corregida)
+    async function obtenerDatosCrudos(area, horas) {
       const resultados = { lluvia: "--", temp: "--" };
+      const apiKey = apiKeys[currentApiKeyIndex];
       
       try {
         const ahora = new Date();
-        let fechaInicio, fechaFin;
+        let fechaInicio;
         
+        // Ajustar fecha de inicio según el período seleccionado
         if (horas === 24) {
           fechaInicio = new Date(ahora.getFullYear(), ahora.getMonth(), ahora.getDate());
-          fechaFin = ahora;
         } else if (horas === 48) {
           fechaInicio = new Date(ahora.getFullYear(), ahora.getMonth(), ahora.getDate() - 1);
-          fechaFin = ahora;
         } else {
           fechaInicio = new Date(ahora.getFullYear(), ahora.getMonth(), ahora.getDate() - 2);
-          fechaFin = ahora;
         }
 
-        const fechaInicioStr = fechaInicio.toISOString().split('T')[0];
-        const fechaFinStr = fechaFin.toISOString().split('T')[0];
+        // Convertir a timestamp UNIX (segundos)
+        const inicioUnix = Math.floor(fechaInicio.getTime() / 1000);
+        const finUnix = Math.floor(ahora.getTime() / 1000);
         
-        const url = `https://api.open-meteo.com/v1/forecast?latitude=${area.lat}&longitude=${area.lon}&hourly=precipitation,temperature_2m&start_date=${fechaInicioStr}&end_date=${fechaFinStr}&timezone=auto`;
+        // URLs para las llamadas a la API
+        const urlHistorial = `https://api.openweathermap.org/data/3.0/onecall/timemachine?lat=${area.lat}&lon=${area.lon}&dt=${inicioUnix}&end=${finUnix}&units=metric&appid=${apiKey}`;
+        const urlActual = `https://api.openweathermap.org/data/2.5/weather?lat=${area.lat}&lon=${area.lon}&units=metric&appid=${apiKey}`;
         
-        const response = await fetch(url);
-        const data = await response.json();
+        // Hacer ambas llamadas en paralelo
+        const [responseHistorial, responseActual] = await Promise.all([
+          fetch(urlHistorial),
+          fetch(urlActual)
+        ]);
         
-        if (data.hourly?.precipitation) {
-          const horasReales = data.hourly.time.map(t => new Date(t));
-          const precipitaciones = data.hourly.precipitation;
-          
+        const dataHistorial = await responseHistorial.json();
+        const dataActual = await responseActual.json();
+
+        // Procesar lluvia acumulada
+        if (dataHistorial.data && dataHistorial.data.length > 0) {
           let lluviaTotal = 0;
-          for (let i = 0; i < horasReales.length; i++) {
-            if (horasReales[i] >= fechaInicio && horasReales[i] <= fechaFin) {
-              lluviaTotal += precipitaciones[i];
+          dataHistorial.data.forEach(hora => {
+            if (hora.rain && hora.rain['1h']) {
+              lluviaTotal += hora.rain['1h'];
             }
-          }
-          
-          // Aplicar factor de corrección específico para lluvia
-          resultados.lluvia = (lluviaTotal * factoresCorreccion[cuenca]).toFixed(1);
+          });
+          resultados.lluvia = lluviaTotal.toFixed(1);
         }
         
-        if (data.hourly?.temperature_2m) {
-          // Aplicar corrección de temperatura (+1.5°C)
-          const tempCruda = data.hourly.temperature_2m.slice(-1)[0];
-          resultados.temp = (tempCruda + factoresCorreccion.temperatura).toFixed(1);
+        // Procesar temperatura actual
+        if (dataActual.main && dataActual.main.temp) {
+          resultados.temp = dataActual.main.temp.toFixed(1);
         }
         
       } catch (e) {
-        console.error("Error Open-Meteo:", e);
+        console.error("Error OpenWeatherMap:", e);
+        // Rotar API Key si falla
+        currentApiKeyIndex = (currentApiKeyIndex + 1) % apiKeys.length;
         resultados.lluvia = "Error";
         resultados.temp = "Error";
       }
@@ -284,12 +288,12 @@
         });
         
         const [alto, medio, bajo] = await Promise.all([
-          obtenerDatosCorregidos(areasOpenMeteo.alto, estadoSistema.horasSeleccionadas, 'alta'),
-          obtenerDatosCorregidos(areasOpenMeteo.medio, estadoSistema.horasSeleccionadas, 'media'),
-          obtenerDatosCorregidos(areasOpenMeteo.bajo, estadoSistema.horasSeleccionadas, 'baja')
+          obtenerDatosCrudos(areas.alto, estadoSistema.horasSeleccionadas),
+          obtenerDatosCrudos(areas.medio, estadoSistema.horasSeleccionadas),
+          obtenerDatosCrudos(areas.bajo, estadoSistema.horasSeleccionadas)
         ]);
 
-        // Actualizar UI con datos corregidos
+        // Actualizar UI con datos crudos
         document.getElementById('lluvia-alto').textContent = `${alto.lluvia} mm`;
         document.getElementById('temp-alto').textContent = `Temp: ${alto.temp}°C`;
         document.getElementById('lluvia-medio').textContent = `${medio.lluvia} mm`;
@@ -297,19 +301,11 @@
         document.getElementById('lluvia-bajo').textContent = `${bajo.lluvia} mm`;
         document.getElementById('temp-bajo').textContent = `Temp: ${bajo.temp}°C`;
 
-        // Actualizar hora
+        // Actualizar hora y período
         document.getElementById('hora-update').textContent = new Date().toLocaleTimeString('es-AR', {hour: '2-digit', minute:'2-digit'});
-        
-        // Actualizar texto del periodo seleccionado
-        let periodoTexto = '';
-        if (estadoSistema.horasSeleccionadas === 24) {
-          periodoTexto = '(Hoy desde 00:00h)';
-        } else if (estadoSistema.horasSeleccionadas === 48) {
-          periodoTexto = '(Ayer completo + Hoy)';
-        } else {
-          periodoTexto = '(3 días completos)';
-        }
-        document.getElementById('ultimo-periodo').textContent = periodoTexto;
+        document.getElementById('ultimo-periodo').textContent = 
+          estadoSistema.horasSeleccionadas === 24 ? '(Hoy desde 00:00h)' :
+          estadoSistema.horasSeleccionadas === 48 ? '(Ayer completo + Hoy)' : '(3 días completos)';
         
       } catch (e) {
         console.error("Error en actualización:", e);
@@ -327,6 +323,7 @@
       });
     });
 
+    // Tooltips
     document.querySelectorAll('.info-icon').forEach(icon => {
       icon.addEventListener('click', (e) => {
         const tooltipId = e.currentTarget.dataset.tooltip;
