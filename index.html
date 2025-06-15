@@ -129,8 +129,7 @@
       font-style: italic;
     }
     .error {
-      color: var(--color-error);
-      animation: blink 1s infinite;
+      color: var(--color-error); /* ELIMINADO: animation: blink 1s infinite; */
     }
     .fuente-datos {
       position: absolute;
@@ -140,7 +139,7 @@
       color: #888;
       font-style: italic;
     }
-    @keyframes blink { 50% { opacity: 0.5; } }
+    /* ELIMINADO: @keyframes blink { 50% { opacity: 0.5; } } */
   </style>
 </head>
 <body>
@@ -187,13 +186,13 @@
     <div class="footer">
       Monitor fuente OW + Hibrid| Actualizado: <span id="hora-update">--:--</span>
       <span id="ultimo-periodo" style="font-style: italic; color: #aaa;"></span>
-          </div>
+    </div>
     <div class="creditos">
       Creado por guardianesarroyosba ©  🇦🇷 Ing. Maschwitz
     </div>
   </div>
 
-  <!-- === SCRIPT ORIGINAL + MEJORAS HÍBRIDAS === -->
+  <!-- === SCRIPT ORIGINAL + MEJORAS HÍBRIDAS (EXACTAMENTE IGUAL) === -->
   <script>
     // Configuración original
     const config = {
