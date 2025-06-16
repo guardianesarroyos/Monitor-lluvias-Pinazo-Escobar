@@ -3,10 +3,9 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Arroyo Pinazo-Escobar - Monitor Híbrido (Datos CRUDOS + Manuales)</title>
+  <title>Arroyo Pinazo-Escobar - Monitor Híbrido-Manual</title>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <style>
-    /* === ESTILOS ORIGINALES === */
     :root {
       --color-alto: #64b5f6;
       --color-medio: #4db6ac;
@@ -124,21 +123,6 @@
       color: #ccc;
       margin-top: 6px;
     }
-    .loading {
-      color: #aaa;
-      font-style: italic;
-    }
-    .error {
-      color: var(--color-error);
-    }
-    .fuente-datos {
-      position: absolute;
-      bottom: -5px;
-      right: 5px;
-      font-size: 10px;
-      color: #888;
-      font-style: italic;
-    }
   </style>
 </head>
 <body>
@@ -182,19 +166,22 @@
       </div>
     </div>
     <div class="footer">
-      Monitor fuente OW + Hibrid| Actualizado: <span id="hora-update">--:--</span>
-      <span id="ultimo-periodo" style="font-style: italic; color: #aaa;"></span>
+      Monitor fuente OW + Hibrid | Actualizado: <span id="hora-update">--:--</span>
     </div>
     <div class="creditos">
-      Creado por guardianesarroyosba ©  🇦🇷 Ing. Maschwitz
+      Creado por guardianesarroyosba © 🇦🇷 Ing. Maschwitz
     </div>
   </div>
 
   <script>
     // Configuración
     const config = {
-      intervaloActualizacion: 15 * 60 * 1000, // 15 minutos
-      tiempoMaximoEspera: 10000
+      intervaloActualizacion: 15 * 60 * 1000 // 15 minutos
+    };
+
+    // Estado del sistema
+    const estadoSistema = {
+      horasSeleccionadas: 24
     };
 
     // Áreas geográficas
@@ -204,23 +191,61 @@
       bajo: { lat: -34.336, lon: -58.715 }  // Belén de Escobar
     };
 
-    // API Keys de OpenWeatherMap
-    const apiKeys = [
-      'f4d1c9e95384cf24724a8205aea60940',
-      '52b3db6f3db08d7602d714b39d519d69'
-    ];
-    let currentApiKeyIndex = 0;
+    // API Keys
+    const apiKeys = {
+      openWeather: 'f4d1c9e95384cf24724a8205aea60940',
+      openMeteo: 'https://api.open-meteo.com/v1/forecast'
+    };
 
     // Cargar datos manuales
     async function cargarDatosManuales() {
       try {
         const response = await fetch('https://guardianesarroyos.github.io/Monitor-lluvias-Pinazo-Escobar/DATOS/manuales.json?t=' + new Date().getTime());
         if (!response.ok) return null;
-        const json = await response.json();
-        console.log("✅ Datos manuales cargados:", json);
-        return json;
+        return await response.json();
       } catch {
         return null;
+      }
+    }
+
+    // Obtener temperatura con respaldo
+    async function obtenerTemperatura(area) {
+      try {
+        // Intento con OpenWeatherMap
+        const owmResponse = await fetch(`https://api.openweathermap.org/data/2.5/weather?lat=${area.lat}&lon=${area.lon}&appid=${apiKeys.openWeather}&units=metric`);
+        
+        if (owmResponse.ok) {
+          const data = await owmResponse.json();
+          return data.main?.temp?.toFixed(1) || "--";
+        }
+
+        // Si falla, intentar con Open-Meteo
+        const omResponse = await fetch(`${apiKeys.openMeteo}?latitude=${area.lat}&longitude=${area.lon}&current=temperature_2m`);
+        
+        if (omResponse.ok) {
+          const data = await omResponse.json();
+          return data.current?.temperature_2m?.toFixed(1) || "--";
+        }
+
+        return "--";
+      } catch (e) {
+        console.error("Error obteniendo temperatura:", e);
+        return "--";
+      }
+    }
+
+    // Obtener datos de lluvia
+    async function obtenerDatosLluvia(area, horas) {
+      try {
+        const response = await fetch(`https://api.openweathermap.org/data/2.5/onecall?lat=${area.lat}&lon=${area.lon}&exclude=minutely,daily,alerts&appid=${apiKeys.openWeather}&units=metric`);
+        const data = await response.json();
+
+        const horasValidas = data.hourly?.slice(0, horas) || [];
+        const lluviaTotal = horasValidas.reduce((sum, h) => sum + (h.rain?.['1h'] || 0), 0);
+
+        return lluviaTotal.toFixed(1);
+      } catch {
+        return "--";
       }
     }
 
@@ -229,25 +254,24 @@
       try {
         const datosManuales = await cargarDatosManuales();
         const ahora = new Date();
-        const horasSeleccionadas = estadoSistema.horasSeleccionadas;
+        const horas = estadoSistema.horasSeleccionadas;
 
-        // Procesar datos manuales (si existen y son vigentes)
+        // Procesar datos manuales
         if (datosManuales) {
           const fechaManual = new Date(datosManuales.ultima_actualizacion);
-          const horasDesdeManual = (ahora - fechaManual) / (1000 * 60 * 60);
+          const horasDesdeManual = (ahora - fechaManual) / 3600000;
 
           if (horasDesdeManual < 72) {
-            // Calcular lluvias según el rango seleccionado
             let lluvias;
-            if (horasSeleccionadas === 24) {
+            if (horas === 24) {
               lluvias = datosManuales.hoy;
-            } else if (horasSeleccionadas === 48) {
+            } else if (horas === 48) {
               lluvias = {
                 lluvia_alto: datosManuales.hoy.lluvia_alto + datosManuales.ayer.lluvia_alto,
                 lluvia_medio: datosManuales.hoy.lluvia_medio + datosManuales.ayer.lluvia_medio,
                 lluvia_bajo: datosManuales.hoy.lluvia_bajo + datosManuales.ayer.lluvia_bajo
               };
-            } else { // 72 horas (3 días)
+            } else {
               lluvias = {
                 lluvia_alto: datosManuales.hoy.lluvia_alto + datosManuales.ayer.lluvia_alto + (datosManuales.antes_de_ayer?.lluvia_alto || 0),
                 lluvia_medio: datosManuales.hoy.lluvia_medio + datosManuales.ayer.lluvia_medio + (datosManuales.antes_de_ayer?.lluvia_medio || 0),
@@ -262,22 +286,28 @@
           }
         }
 
-        // Cargar temperaturas desde OpenWeather (SIEMPRE)
-        const [alto, medio, bajo] = await Promise.all([
-          obtenerDatosCrudos(areas.alto, horasSeleccionadas),
-          obtenerDatosCrudos(areas.medio, horasSeleccionadas),
-          obtenerDatosCrudos(areas.bajo, horasSeleccionadas)
+        // Obtener y mostrar temperaturas
+        const [tempAlto, tempMedio, tempBajo] = await Promise.all([
+          obtenerTemperatura(areas.alto),
+          obtenerTemperatura(areas.medio),
+          obtenerTemperatura(areas.bajo)
         ]);
 
-        document.getElementById('temp-alto').textContent = `Temp: ${alto.temperatura}°C`;
-        document.getElementById('temp-medio').textContent = `Temp: ${medio.temperatura}°C`;
-        document.getElementById('temp-bajo').textContent = `Temp: ${bajo.temperatura}°C`;
+        document.getElementById('temp-alto').textContent = `Temp: ${tempAlto}°C`;
+        document.getElementById('temp-medio').textContent = `Temp: ${tempMedio}°C`;
+        document.getElementById('temp-bajo').textContent = `Temp: ${tempBajo}°C`;
 
-        // Si no hay manuales o están vencidos, usar OpenWeather para lluvias
-        if (!datosManuales || (new Date() - new Date(datosManuales.ultima_actualizacion)) / (1000 * 60 * 60) >= 72) {
-          document.getElementById('lluvia-alto').textContent = `${alto.lluvia} mm`;
-          document.getElementById('lluvia-medio').textContent = `${medio.lluvia} mm`;
-          document.getElementById('lluvia-bajo').textContent = `${bajo.lluvia} mm`;
+        // Si no hay datos manuales, usar API para lluvias
+        if (!datosManuales) {
+          const [lluviaAlto, lluviaMedio, lluviaBajo] = await Promise.all([
+            obtenerDatosLluvia(areas.alto, horas),
+            obtenerDatosLluvia(areas.medio, horas),
+            obtenerDatosLluvia(areas.bajo, horas)
+          ]);
+
+          document.getElementById('lluvia-alto').textContent = `${lluviaAlto} mm`;
+          document.getElementById('lluvia-medio').textContent = `${lluviaMedio} mm`;
+          document.getElementById('lluvia-bajo').textContent = `${lluviaBajo} mm`;
           document.getElementById('hora-update').textContent = ahora.toLocaleTimeString('es-AR');
         }
 
@@ -287,46 +317,15 @@
       }
     }
 
-    // Obtener datos de OpenWeather
-    async function obtenerDatosCrudos(area, horas) {
-      try {
-        const response = await fetch(`https://api.openweathermap.org/data/2.5/onecall?lat=${area.lat}&lon=${area.lon}&exclude=minutely,hourly,daily,alerts&appid=${apiKeys[currentApiKeyIndex]}&units=metric`);
-        const data = await response.json();
-        
-        // Rotar API Key si hay error
-        if (data.cod === 401) {
-          currentApiKeyIndex = (currentApiKeyIndex + 1) % apiKeys.length;
-          return obtenerDatosCrudos(area, horas);
-        }
-
-        const ahora = new Date();
-        const lluviaTotal = data.hourly.slice(0, horas).reduce((sum, h) => sum + (h.rain?.['1h'] || 0), 0);
-        
-        console.log("✅ Datos OpenWeather:", data);
-        return {
-          lluvia: lluviaTotal.toFixed(1),
-          temperatura: data.current?.temp ? data.current.temp.toFixed(1) : "--"
-        };
-
-      } catch (e) {
-        console.error("Error al obtener datos crudos:", e);
-        return { lluvia: "--", temperatura: "--" };
-      }
-    }
-
-    // Estado del sistema
-    let estadoSistema = { horasSeleccionadas: 24 };
-
-    // Tooltips
+    // Event listeners para tooltips
     document.querySelectorAll('.info-icon').forEach(icon => {
-      icon.addEventListener('click', (e) => {
+      icon.addEventListener('click', e => {
         const tooltipId = e.currentTarget.dataset.tooltip;
-        const tooltip = document.getElementById(tooltipId);
-        tooltip.classList.toggle('visible');
+        document.getElementById(tooltipId).classList.toggle('visible');
       });
     });
 
-    // Selector de tiempo
+    // Event listeners para selector de tiempo
     document.querySelectorAll('.selector-tiempo button').forEach(btn => {
       btn.addEventListener('click', () => {
         document.querySelectorAll('.selector-tiempo button').forEach(b => b.classList.remove('active'));
