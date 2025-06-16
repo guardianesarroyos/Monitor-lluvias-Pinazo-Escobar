@@ -6,13 +6,13 @@
     "lluvia_bajo": 0
   },
   "ayer": {
-    "lluvia_alto": 16.5,
-    "lluvia_medio": 13.7,
-    "lluvia_bajo": 11.4
+    "lluvia_alto": 0,
+    "lluvia_medio": 0,
+    "lluvia_bajo": 0,
   },
   "antes_de_ayer": {
-    "lluvia_alto": 12.7,   
-    "lluvia_medio": 8.2,
-    "lluvia_bajo": 5.9
+    "lluvia_alto": 0,   
+    "lluvia_medio": 0,
+    "lluvia_bajo": 0,
   }
 }
