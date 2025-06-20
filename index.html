@@ -11,7 +11,7 @@
     </script>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-    <title>Arroyo Pinazo-Escobar - Monitor Híbrido y Manual</title>
+    <title>Arroyo Pinazo-Escobar - Monitor Híbrido-Manual</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
         :root {
@@ -219,35 +219,40 @@
         // API Endpoints
         const apiEndpoints = {
             openMeteo: 'https://api.open-meteo.com/v1/forecast',
+            sunriseSunset: 'https://api.sunrise-sunset.org/json',
             wunderground: 'https://api.weather.com/v3/wx/observations/current'
         };
 
-        // Función para calcular horarios solares
+        // Función para calcular horarios solares (SOLO usa sunrise-sunset.org)
         async function calcularHorariosSolares() {
             try {
                 const ahora = new Date();
                 const fechaLocal = new Date(ahora.toLocaleString('en-US', { timeZone: config.ubicacion.zonaHoraria }));
+                const fechaHoy = fechaLocal.toISOString().split('T')[0];
                 
-                const response = await fetch(`https://api.sunrise-sunset.org/json?lat=${config.ubicacion.lat}&lng=${config.ubicacion.lon}&formatted=0&date=${fechaLocal.toISOString().split('T')[0]}`);
+                const response = await fetch(`${apiEndpoints.sunriseSunset}?lat=${config.ubicacion.lat}&lng=${config.ubicacion.lon}&formatted=0&date=${fechaHoy}`);
                 const data = await response.json();
                 
                 if (data.status === 'OK') {
                     const amanecer = new Date(data.results.sunrise);
                     const atardecer = new Date(data.results.sunset);
                     
+                    // Ajustar a la zona horaria local
                     amanecer.setMinutes(amanecer.getMinutes() + amanecer.getTimezoneOffset());
                     atardecer.setMinutes(atardecer.getMinutes() + atardecer.getTimezoneOffset());
                     
                     estadoSistema.horariosSolares = { amanecer, atardecer };
-                    console.log('Horarios solares actualizados:', estadoSistema.horariosSolares);
+                    console.log('Horarios solares actualizados (sunrise-sunset.org):', estadoSistema.horariosSolares);
                 }
             } catch (error) {
                 console.error('Error al calcular horarios solares:', error);
+                // Fallback: valores por defecto para Buenos Aires
                 const fecha = new Date();
                 estadoSistema.horariosSolares = {
                     amanecer: new Date(fecha.getFullYear(), fecha.getMonth(), fecha.getDate(), 7, 30, 0),
                     atardecer: new Date(fecha.getFullYear(), fecha.getMonth(), fecha.getDate(), 18, 0, 0)
                 };
+                console.log('Usando horarios solares por defecto:', estadoSistema.horariosSolares);
             }
         }
 
@@ -341,6 +346,7 @@
                     }
                 }
                 
+                console.warn("Wunderground no devolvió datos de lluvia válidos");
                 return "--";
             } catch (error) {
                 console.error("Error obteniendo datos de lluvia de Wunderground:", error);
