@@ -38,7 +38,6 @@
             min-height: 100vh;
             transition: background-image 0.5s ease-in-out;
         }
-        /* Resto de tus estilos CSS permanecen igual */
         .contenedor {
             width: 100%;
             height: 100vh;
@@ -179,7 +178,7 @@
             </div>
         </div>
         <div class="footer">
-            Monitor fuente Hibrid + Open-Meteo | Actualizado: <span id="hora-update">--:--</span>
+            Monitor fuente Hibrid + Open-Meteo + Wunderground | Actualizado: <span id="hora-update">--:--</span>
         </div>
         <div class="creditos">
             Creado por guardianesarroyosba © 🇦🇷 Ing. Maschwitz
@@ -199,7 +198,8 @@
                 dia: 'https://raw.githubusercontent.com/guardianesarroyos/Monitor-lluvias-Pinazo-Escobar/main/grafica-arroyo_clean.png',
                 noche: 'https://raw.githubusercontent.com/guardianesarroyos/Monitor-lluvias-Pinazo-Escobar/main/fondo_arroyo_noche.png'
             },
-            margenCambioFondo: 30 // minutos de margen para el cambio
+            margenCambioFondo: 30, // minutos de margen para el cambio
+            wundergroundApiKey: '6532d6454b8aa370768e63d6ba5a832e' // API Key de Wunderground
         };
 
         // Estado del sistema
@@ -219,7 +219,7 @@
         // API Endpoints
         const apiEndpoints = {
             openMeteo: 'https://api.open-meteo.com/v1/forecast',
-            wunderground: 'https://api.weather.com/v3/wx/observations/current' // Ejemplo, necesitarás la API key real
+            wunderground: 'https://api.weather.com/v3/wx/observations/current'
         };
 
         // Función para calcular horarios solares
@@ -322,21 +322,28 @@
             }
         }
 
-        // Obtener datos de lluvia con Wunderground (requiere API key)
-        async function obtenerDatosLluvia(area, horas) {
+        // Obtener datos de lluvia con Wunderground
+        async function obtenerDatosLluvia(area) {
             try {
-                // Implementación con Wunderground necesitaría tu API key
-                // Esta es una implementación de ejemplo
-                const response = await fetch(`${apiEndpoints.wunderground}?apiKey=TU_API_KEY&geocode=${area.lat},${area.lon}&units=m`);
+                const url = `${apiEndpoints.wunderground}?apiKey=${config.wundergroundApiKey}&geocode=${area.lat},${area.lon}&units=m&language=es-AR`;
+                const response = await fetch(url);
                 
                 if (response.ok) {
                     const data = await response.json();
-                    // Procesar datos de Wunderground según su formato
-                    return data.precipitation?.last24hours?.toFixed(1) || "--";
+                    
+                    // Procesamiento de datos según formato de Wunderground
+                    if (data.precipitationSummary && data.precipitationSummary.precip24Hour) {
+                        return parseFloat(data.precipitationSummary.precip24Hour).toFixed(1);
+                    } else if (data.precipitationLast24Hours) {
+                        return parseFloat(data.precipitationLast24Hours).toFixed(1);
+                    } else if (data.precip_24hr) {
+                        return parseFloat(data.precip_24hr).toFixed(1);
+                    }
                 }
-
+                
                 return "--";
-            } catch {
+            } catch (error) {
+                console.error("Error obteniendo datos de lluvia de Wunderground:", error);
                 return "--";
             }
         }
@@ -388,11 +395,12 @@
                 document.getElementById('temp-medio').textContent = `Temp: ${tempMedio}°C`;
                 document.getElementById('temp-bajo').textContent = `Temp: ${tempBajo}°C`;
 
+                // Si no hay datos manuales, usar Wunderground para lluvias
                 if (!datosManuales) {
                     const [lluviaAlto, lluviaMedio, lluviaBajo] = await Promise.all([
-                        obtenerDatosLluvia(areas.alto, horas),
-                        obtenerDatosLluvia(areas.medio, horas),
-                        obtenerDatosLluvia(areas.bajo, horas)
+                        obtenerDatosLluvia(areas.alto),
+                        obtenerDatosLluvia(areas.medio),
+                        obtenerDatosLluvia(areas.bajo)
                     ]);
 
                     document.getElementById('lluvia-alto').textContent = `${lluviaAlto} mm`;
@@ -428,7 +436,7 @@
         // Inicialización
         calcularHorariosSolares().then(() => {
             iniciarCambioFondoAutomatico();
-            setInterval(calcularHorariosSolares, 86400000);
+            setInterval(calcularHorariosSolares, 86400000); // Actualizar horarios solares cada 24 horas
         });
         
         actualizarDatos();
