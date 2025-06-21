@@ -11,7 +11,7 @@
     </script>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-    <title>Arroyo Pinazo-Escobar - Monitor Híbrido</title>
+    <title>Arroyo Pinazo-Escobar - Monitor Híbrido-Manual</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
         :root {
@@ -28,7 +28,7 @@
         body {
             margin: 0;
             padding: 0;
-            background-image: url('https://raw.githubusercontent.com/guardianesarroyos/Monitor-lluvias-Pinazo-Escobar/main/grafica-arroyo_clean.png');
+            background-image: url('https://raw.githubusercontent.com/guardianesarroyos/Monitor-lluvias-Pinazo-Escobar/main/fondo-arroyo_noche.png');
             background-repeat: no-repeat;
             background-position: center center;
             background-attachment: fixed;
@@ -135,6 +135,13 @@
             color: #ccc;
             margin-top: 6px;
         }
+        .status-indicator {
+            font-size: 10px;
+            margin-left: 5px;
+            vertical-align: middle;
+        }
+        .status-wunderground { color: #4CAF50; }
+        .status-openmeteo { color: #2196F3; }
     </style>
 </head>
 <body>
@@ -156,7 +163,7 @@
                     <div class="tooltip-text" id="tooltip-alto">Área: Pilar, Del Viso, JC. Paz</div>
                 </div>
                 <span class="valor" id="lluvia-alto">-- mm</span>
-                <span class="temp" id="temp-alto">Temp: --°C</span>
+                <span class="temp" id="temp-alto">Temp: --°C <span id="status-alto" class="status-indicator"></span></span>
             </div>
             <div class="burbuja medio">
                 CUENCA MEDIA
@@ -165,7 +172,7 @@
                     <div class="tooltip-text" id="tooltip-medio">Área: Maquinista Savio, Ing. Maschwitz</div>
                 </div>
                 <span class="valor" id="lluvia-medio">-- mm</span>
-                <span class="temp" id="temp-medio">Temp: --°C</span>
+                <span class="temp" id="temp-medio">Temp: --°C <span id="status-medio" class="status-indicator"></span></span>
             </div>
             <div class="burbuja bajo">
                 CUENCA BAJA
@@ -174,11 +181,11 @@
                     <div class="tooltip-text" id="tooltip-bajo">Área: Belén de Escobar</div>
                 </div>
                 <span class="valor" id="lluvia-bajo">-- mm</span>
-                <span class="temp" id="temp-bajo">Temp: --°C</span>
+                <span class="temp" id="temp-bajo">Temp: --°C <span id="status-bajo" class="status-indicator"></span></span>
             </div>
         </div>
         <div class="footer">
-            Monitor fuente <span id="fuente-datos">Híbrido WU+OM+Man</span> | Actualizado: <span id="hora-update">--:--</span>
+            Monitor fuente Hibrid + Open-Meteo + Wunderground | Actualizado: <span id="hora-update">--:--</span>
         </div>
         <div class="creditos">
             Creado por guardianesarroyosba © 🇦🇷 Ing. Maschwitz
@@ -186,7 +193,7 @@
     </div>
 
     <script>
-        // ========== CONFIGURACIÓN ========== //
+        // Configuración
         const config = {
             intervaloActualizacion: 15 * 60 * 1000, // 15 minutos
             ubicacion: {
@@ -198,8 +205,9 @@
                 dia: 'https://raw.githubusercontent.com/guardianesarroyos/Monitor-lluvias-Pinazo-Escobar/main/grafica-arroyo_clean.png',
                 noche: 'https://raw.githubusercontent.com/guardianesarroyos/Monitor-lluvias-Pinazo-Escobar/main/fondo_arroyo_noche.png'
             },
-            margenCambioFondo: 30, // minutos de margen
-            wundergroundApiKey: '6532d6454b8aa370768e63d6ba5a832e'
+            margenCambioFondo: 30, // minutos de margen para el cambio
+            wundergroundApiKey: '6532d6454b8aa370768e63d6ba5a832e', // API Key de Wunderground
+            maxReintentos: 2 // Número de reintentos para Wunderground
         };
 
         // Estado del sistema
@@ -207,24 +215,36 @@
             horasSeleccionadas: 24,
             horariosSolares: null,
             ultimoFondo: null,
-            fuenteDatos: "Cargando..."
+            usandoOpenMeteo: false
         };
 
-        // Áreas geográficas
+        // Áreas geográficas con IDs de estación Wunderground
         const areas = {
-            alto: { lat: -34.455, lon: -58.859 }, // Pilar
-            medio: { lat: -34.386, lon: -58.767 }, // Ing. Maschwitz
-            bajo: { lat: -34.336, lon: -58.715 }  // Belén de Escobar
+            alto: { 
+                lat: -34.455, 
+                lon: -58.859,
+                wundergroundId: "IPILAR8" // Estación Pilar
+            },
+            medio: { 
+                lat: -34.386, 
+                lon: -58.767,
+                wundergroundId: "IINGEN19" // Estación Maschwitz
+            },
+            bajo: { 
+                lat: -34.336, 
+                lon: -58.715,
+                wundergroundId: "IINGEN39" // Estación Escobar
+            }
         };
 
         // API Endpoints
         const apiEndpoints = {
+            openMeteo: 'https://api.open-meteo.com/v1/forecast',
             sunriseSunset: 'https://api.sunrise-sunset.org/json',
-            wunderground: 'https://api.weather.com/v3/wx/observations/current',
-            openMeteo: 'https://api.open-meteo.com/v1/forecast'
+            wunderground: 'https://api.weather.com/v2/pws/observations/current'
         };
 
-        // ========== SISTEMA DÍA/NOCHE (SUNRISE-SUNSET) ========== //
+        // Función para calcular horarios solares
         async function calcularHorariosSolares() {
             try {
                 const ahora = new Date();
@@ -243,22 +263,21 @@
                     atardecer.setMinutes(atardecer.getMinutes() + atardecer.getTimezoneOffset());
                     
                     estadoSistema.horariosSolares = { amanecer, atardecer };
-                    console.log('Horarios solares actualizados:', {
-                        amanecer: estadoSistema.horariosSolares.amanecer.toLocaleTimeString('es-AR'),
-                        atardecer: estadoSistema.horariosSolares.atardecer.toLocaleTimeString('es-AR')
-                    });
+                    console.log('Horarios solares actualizados:', estadoSistema.horariosSolares);
                 }
             } catch (error) {
                 console.error('Error al calcular horarios solares:', error);
-                // Fallback manual para Buenos Aires
+                // Fallback: valores por defecto para Buenos Aires
                 const fecha = new Date();
                 estadoSistema.horariosSolares = {
                     amanecer: new Date(fecha.getFullYear(), fecha.getMonth(), fecha.getDate(), 7, 30, 0),
                     atardecer: new Date(fecha.getFullYear(), fecha.getMonth(), fecha.getDate(), 18, 0, 0)
                 };
+                console.log('Usando horarios solares por defecto:', estadoSistema.horariosSolares);
             }
         }
 
+        // Función para actualizar el fondo según la hora
         function actualizarFondoSegunHora() {
             if (!estadoSistema.horariosSolares) return;
             
@@ -274,174 +293,125 @@
             if (estadoSistema.ultimoFondo !== nuevoFondo) {
                 document.body.style.backgroundImage = `url('${nuevoFondo}')`;
                 estadoSistema.ultimoFondo = nuevoFondo;
-                console.log(`[${ahora.toLocaleTimeString('es-AR')}] Fondo cambiado a: ${esDeNoche ? 'NOCTURNO' : 'DIURNO'}`);
+                
+                console.log(`[${ahora.toLocaleTimeString('es-AR', {timeZone: 'America/Argentina/Buenos_Aires'})}] 
+                  Fondo cambiado a: ${esDeNoche ? 'Nocturno' : 'Diurno'}
+                  Horarios: Amanecer ${estadoSistema.horariosSolares.amanecer.toLocaleTimeString('es-AR')} | 
+                  Atardecer ${estadoSistema.horariosSolares.atardecer.toLocaleTimeString('es-AR')}`);
             }
         }
 
-        function iniciarCambioFondoAutomatico() {
-            actualizarFondoSegunHora();
-            setInterval(actualizarFondoSegunHora, 60 * 1000); // Verificar cada minuto
-        }
-
-        // ========== SISTEMA DE DATOS METEOROLÓGICOS ========== //
-        // 1. Wunderground (prioridad máxima)
-        async function obtenerDatosWunderground(area) {
+        // Obtener datos de Wunderground con reintentos
+        async function obtenerDatosWunderground(stationId, intentos = config.maxReintentos) {
             try {
-                const url = `${apiEndpoints.wunderground}?apiKey=${config.wundergroundApiKey}&geocode=${area.lat},${area.lon}&units=m&language=es-AR`;
+                const url = `${apiEndpoints.wunderground}?stationId=${stationId}&format=json&units=m&apiKey=${config.wundergroundApiKey}`;
                 const response = await fetch(url);
                 
                 if (response.ok) {
                     const data = await response.json();
-                    const resultado = { lluvia: "--", temperatura: "--", fuente: "WU" };
                     
-                    // Procesar lluvia (prioridad absoluta)
-                    if (data.precipitationSummary?.precip24Hour) {
-                        resultado.lluvia = parseFloat(data.precipitationSummary.precip24Hour).toFixed(1);
-                    } else if (data.precipitationLast24Hours) {
-                        resultado.lluvia = parseFloat(data.precipitationLast24Hours).toFixed(1);
+                    if (data.observations?.length > 0) {
+                        const obs = data.observations[0];
+                        return {
+                            lluvia: obs.metric.precipTotal || 0,
+                            temp: obs.metric.temp,
+                            status: 'wunderground'
+                        };
                     }
-                    
-                    // Procesar temperatura (prioridad secundaria)
-                    if (data.temperature) {
-                        resultado.temperatura = parseFloat(data.temperature).toFixed(1);
-                    }
-                    
-                    return resultado;
                 }
+                
+                if (intentos > 1) {
+                    await new Promise(resolve => setTimeout(resolve, 1000));
+                    return obtenerDatosWunderground(stationId, intentos - 1);
+                }
+                
+                return null;
             } catch (error) {
                 console.error("Error Wunderground:", error);
+                if (intentos > 1) {
+                    await new Promise(resolve => setTimeout(resolve, 1000));
+                    return obtenerDatosWunderground(stationId, intentos - 1);
+                }
+                return null;
             }
-            return null;
         }
 
-        // 2. Open-Meteo (backup)
-        async function obtenerDatosOpenMeteo(area) {
+        // Obtener datos de Open-Meteo (fallback)
+        async function obtenerDatosOpenMeteo(lat, lon) {
             try {
-                const url = `${apiEndpoints.openMeteo}?latitude=${area.lat}&longitude=${area.lon}&current=temperature_2m,precipitation`;
+                const url = `${apiEndpoints.openMeteo}?latitude=${lat}&longitude=${lon}&current=temperature_2m,precipitation&timezone=auto`;
                 const response = await fetch(url);
                 
                 if (response.ok) {
                     const data = await response.json();
                     return {
-                        lluvia: data.current?.precipitation?.toFixed(1) || "--",
-                        temperatura: data.current?.temperature_2m?.toFixed(1) || "--",
-                        fuente: "OM"
+                        lluvia: data.current.precipitation,
+                        temp: data.current.temperature_2m,
+                        status: 'openmeteo'
                     };
                 }
+                return null;
             } catch (error) {
                 console.error("Error Open-Meteo:", error);
-            }
-            return null;
-        }
-
-        // 3. Datos manuales (último recurso)
-        async function cargarDatosManuales() {
-            try {
-                const response = await fetch('https://guardianesarroyos.github.io/Monitor-lluvias-Pinazo-Escobar/DATOS/manuales.json?t=' + new Date().getTime());
-                if (!response.ok) return null;
-                
-                const data = await response.json();
-                const fechaActualizacion = new Date(data.ultima_actualizacion);
-                const horasDesdeActualizacion = (new Date() - fechaActualizacion) / 3600000;
-                
-                if (horasDesdeActualizacion > 72) return null;
-                
-                return {
-                    lluvia_alto: data.hoy.lluvia_alto || "--",
-                    lluvia_medio: data.hoy.lluvia_medio || "--",
-                    lluvia_bajo: data.hoy.lluvia_bajo || "--",
-                    fuente: "Man",
-                    fecha: fechaActualizacion
-                };
-            } catch {
                 return null;
             }
         }
 
-        // ========== ACTUALIZACIÓN PRINCIPAL ========== //
-        async function actualizarDatos() {
+        // Actualizar los datos de una cuenca específica
+        async function actualizarCuenca(prefix, area) {
             try {
-                const ahora = new Date();
-                let fuentesUsadas = new Set();
-
-                // 1. Intentar con Wunderground (máxima prioridad)
-                const [datosWUAlto, datosWUMedio, datosWUBajo] = await Promise.all([
-                    obtenerDatosWunderground(areas.alto),
-                    obtenerDatosWunderground(areas.medio),
-                    obtenerDatosWunderground(areas.bajo)
-                ]);
-
-                // Procesar resultados WU
-                if (datosWUAlto || datosWUMedio || datosWUBajo) {
-                    if (datosWUAlto) {
-                        document.getElementById('lluvia-alto').textContent = `${datosWUAlto.lluvia} mm`;
-                        document.getElementById('temp-alto').textContent = `Temp: ${datosWUAlto.temperatura}°C`;
-                        fuentesUsadas.add(datosWUAlto.fuente);
-                    }
-                    if (datosWUMedio) {
-                        document.getElementById('lluvia-medio').textContent = `${datosWUMedio.lluvia} mm`;
-                        document.getElementById('temp-medio').textContent = `Temp: ${datosWUMedio.temperatura}°C`;
-                        fuentesUsadas.add(datosWUMedio.fuente);
-                    }
-                    if (datosWUBajo) {
-                        document.getElementById('lluvia-bajo').textContent = `${datosWUBajo.lluvia} mm`;
-                        document.getElementById('temp-bajo').textContent = `Temp: ${datosWUBajo.temperatura}°C`;
-                        fuentesUsadas.add(datosWUBajo.fuente);
-                    }
+                // Intentar primero con Wunderground
+                let datos = await obtenerDatosWunderground(area.wundergroundId);
+                let usandoOpenMeteo = false;
+                
+                // Si falla Wunderground, usar Open-Meteo
+                if (!datos) {
+                    datos = await obtenerDatosOpenMeteo(area.lat, area.lon);
+                    usandoOpenMeteo = true;
+                    if (!datos) throw new Error("Ambas APIs fallaron");
                 }
-
-                // 2. Si Wunderground falló, intentar con Open-Meteo
-                if (fuentesUsadas.size === 0) {
-                    const [datosOMAlto, datosOMMedio, datosOMBajo] = await Promise.all([
-                        obtenerDatosOpenMeteo(areas.alto),
-                        obtenerDatosOpenMeteo(areas.medio),
-                        obtenerDatosOpenMeteo(areas.bajo)
-                    ]);
-
-                    if (datosOMAlto || datosOMMedio || datosOMBajo) {
-                        if (datosOMAlto) {
-                            document.getElementById('lluvia-alto').textContent = `${datosOMAlto.lluvia} mm`;
-                            document.getElementById('temp-alto').textContent = `Temp: ${datosOMAlto.temperatura}°C`;
-                            fuentesUsadas.add(datosOMAlto.fuente);
-                        }
-                        if (datosOMMedio) {
-                            document.getElementById('lluvia-medio').textContent = `${datosOMMedio.lluvia} mm`;
-                            document.getElementById('temp-medio').textContent = `Temp: ${datosOMMedio.temperatura}°C`;
-                            fuentesUsadas.add(datosOMMedio.fuente);
-                        }
-                        if (datosOMBajo) {
-                            document.getElementById('lluvia-bajo').textContent = `${datosOMBajo.lluvia} mm`;
-                            document.getElementById('temp-bajo').textContent = `Temp: ${datosOMBajo.temperatura}°C`;
-                            fuentesUsadas.add(datosOMBajo.fuente);
-                        }
-                    }
-                }
-
-                // 3. Si ambas APIs fallaron, usar datos manuales
-                if (fuentesUsadas.size === 0) {
-                    const datosManuales = await cargarDatosManuales();
-                    if (datosManuales) {
-                        document.getElementById('lluvia-alto').textContent = `${datosManuales.lluvia_alto} mm`;
-                        document.getElementById('lluvia-medio').textContent = `${datosManuales.lluvia_medio} mm`;
-                        document.getElementById('lluvia-bajo').textContent = `${datosManuales.lluvia_bajo} mm`;
-                        document.getElementById('hora-update').textContent = datosManuales.fecha.toLocaleTimeString('es-AR');
-                        fuentesUsadas.add(datosManuales.fuente);
-                    }
-                }
-
+                
                 // Actualizar UI
-                estadoSistema.fuenteDatos = "Híbrido " + Array.from(fuentesUsadas).join("+");
-                document.getElementById('fuente-datos').textContent = estadoSistema.fuenteDatos;
-                document.getElementById('hora-update').textContent = ahora.toLocaleTimeString('es-AR');
-
-            } catch (e) {
-                console.error("Error en actualización:", e);
-                document.querySelectorAll('.burbuja').forEach(el => el.classList.add('error'));
-                estadoSistema.fuenteDatos = "Error";
+                document.getElementById(`lluvia-${prefix}`).textContent = `${datos.lluvia} mm`;
+                document.getElementById(`temp-${prefix}`).textContent = `Temp: ${datos.temp}°C`;
+                
+                // Actualizar indicador de fuente
+                const statusElement = document.getElementById(`status-${prefix}`);
+                statusElement.className = `status-indicator status-${datos.status}`;
+                statusElement.textContent = `(${datos.status === 'wunderground' ? 'WU' : 'OM'})`;
+                
+                // Limpiar estado de error si existía
+                document.querySelector(`.burbuja.${prefix}`).classList.remove('error');
+                
+                return true;
+            } catch (error) {
+                console.error(`Error actualizando ${prefix}:`, error);
+                document.querySelector(`.burbuja.${prefix}`).classList.add('error');
+                return false;
             }
         }
 
-        // ========== EVENT LISTENERS ========== //
+        // Función principal de actualización
+        async function actualizarDatos() {
+            const ahora = new Date();
+            document.getElementById('hora-update').textContent = ahora.toLocaleTimeString('es-AR');
+            
+            try {
+                const resultados = await Promise.all([
+                    actualizarCuenca('alto', areas.alto),
+                    actualizarCuenca('medio', areas.medio),
+                    actualizarCuenca('bajo', areas.bajo)
+                ]);
+                
+                // Verificar si estamos usando Open-Meteo como fallback
+                estadoSistema.usandoOpenMeteo = resultados.some(r => r === false);
+                
+            } catch (error) {
+                console.error("Error en actualización general:", error);
+            }
+        }
+
+        // Event listeners para tooltips
         document.querySelectorAll('.info-icon').forEach(icon => {
             icon.addEventListener('click', e => {
                 const tooltipId = e.currentTarget.dataset.tooltip;
@@ -449,6 +419,7 @@
             });
         });
 
+        // Event listeners para selector de tiempo
         document.querySelectorAll('.selector-tiempo button').forEach(btn => {
             btn.addEventListener('click', () => {
                 document.querySelectorAll('.selector-tiempo button').forEach(b => b.classList.remove('active'));
@@ -458,12 +429,17 @@
             });
         });
 
-        // ========== INICIALIZACIÓN ========== //
+        // Inicialización
         calcularHorariosSolares().then(() => {
-            iniciarCambioFondoAutomatico();
-            setInterval(calcularHorariosSolares, 86400000); // Actualizar horarios cada 24h
+            // Iniciar sistema de fondo dinámico
+            actualizarFondoSegunHora();
+            setInterval(actualizarFondoSegunHora, 60 * 1000);
+            
+            // Actualizar horarios solares cada 24 horas
+            setInterval(calcularHorariosSolares, 86400000);
         });
         
+        // Iniciar actualización de datos
         actualizarDatos();
         setInterval(actualizarDatos, config.intervaloActualizacion);
     </script>
