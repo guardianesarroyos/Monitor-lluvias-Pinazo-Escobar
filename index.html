@@ -8,7 +8,7 @@
       function gtag(){dataLayer.push(arguments);}
       gtag('js', new Date());
       gtag('config', 'G-1L72EZY8FL');
-          </script>
+    </script>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
     <title>Arroyo Pinazo-Escobar - Monitor Híbrido</title>
@@ -137,10 +137,9 @@
         }
     </style>
     
-      <link rel="manifest" href="manifest.json">
+    <link rel="manifest" href="manifest.json">
     <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
-      <link rel="apple-touch-icon" href="icons/icon-524.png">
-    
+    <link rel="apple-touch-icon" href="icons/icon-524.png">
 </head>
     
 <body>
@@ -199,6 +198,10 @@
                 lat: -34.6037,
                 lon: -58.3816,
                 zonaHoraria: 'America/Argentina/Buenos_Aires'
+            },
+            wunderground: {
+                apiKey: "6532d6454b8aa370768e63d6ba5a832e",
+                stationId: "IINGEN19"
             },
             imagenesFondo: {
                 dia: 'https://raw.githubusercontent.com/guardianesarroyos/Monitor-lluvias-Pinazo-Escobar/main/grafica-arroyo_clean.png',
@@ -262,22 +265,52 @@
             }
         }
 
+        async function obtenerDatosWunderground(stationId, apiKey) {
+            try {
+                const url = `https://api.weather.com/v2/pws/observations/current?stationId=${stationId}&format=json&units=m&apiKey=${apiKey}`;
+                const response = await fetch(url);
+                if (response.ok) {
+                    const data = await response.json();
+                    const obs = data.observations && data.observations[0];
+                    return {
+                        temp: obs ? obs.metric.temp : "--",
+                        lluvia: obs ? obs.metric.precipTotal : "0.0"
+                    };
+                }
+                return null;
+            } catch (error) {
+                console.error("Error Wunderground:", error);
+                return null;
+            }
+        }
+
         async function actualizarCuenca(prefix, area) {
             try {
-                const datosAuto = await obtenerDatosOpenMeteo(area.lat, area.lon);
+                let datosAuto = null;
+                if (prefix === "medio") {
+                    // 1. Intenta Wunderground primero
+                    datosAuto = await obtenerDatosWunderground(config.wunderground.stationId, config.wunderground.apiKey);
+                    if (!datosAuto) {
+                        // 2. Si falla, intenta OpenMeteo
+                        datosAuto = await obtenerDatosOpenMeteo(area.lat, area.lon);
+                    }
+                } else {
+                    // Para alto y bajo sigue OpenMeteo como siempre
+                    datosAuto = await obtenerDatosOpenMeteo(area.lat, area.lon);
+                }
+
                 let datosManual = null;
-                
                 if (estadoSistema.datosManuales) {
                     datosManual = {
                         lluvia: estadoSistema.datosManuales.hoy[`lluvia_${prefix}`] || "0.0",
                         temp: "--"
                     };
                 }
-                
+
+                // Selecciona el mejor dato disponible
                 const lluviaFinal = datosManual && datosAuto 
                     ? determinarDatoFinal(datosAuto.lluvia, datosManual.lluvia)
                     : datosAuto?.lluvia || datosManual?.lluvia || "--";
-                
                 const tempFinal = datosAuto?.temp || "--";
 
                 document.getElementById(`lluvia-${prefix}`).textContent = `${lluviaFinal} mm`;
@@ -396,9 +429,9 @@
         });
     </script>
     <script>
-  if ('serviceWorker' in navigator) {
-    navigator.serviceWorker.register('service-worker.js');
-  }
-</script>
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('service-worker.js');
+        }
+    </script>
 </body>
 </html>
