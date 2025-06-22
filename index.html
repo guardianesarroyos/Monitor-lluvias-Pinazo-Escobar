@@ -195,7 +195,6 @@
         // Configuración
         const config = {
             intervaloActualizacion: 15 * 60 * 1000, // 15 minutos
-            margenCambioFondo: 30, // minutos para transición día/noche
             ubicacion: {
                 lat: -34.6037,
                 lon: -58.3816,
@@ -323,11 +322,14 @@
                 const data = await response.json();
                 
                 if (data.status === 'OK') {
-                    const amanecer = new Date(data.results.sunrise);
-                    const atardecer = new Date(data.results.sunset);
-                    amanecer.setMinutes(amanecer.getMinutes() + amanecer.getTimezoneOffset());
-                    atardecer.setMinutes(atardecer.getMinutes() + atardecer.getTimezoneOffset());
-                    estadoSistema.horariosSolares = { amanecer, atardecer };
+                    // Convertir a la zona horaria local
+                    const amanecerUTC = new Date(data.results.sunrise);
+                    const atardecerUTC = new Date(data.results.sunset);
+
+                    const amanecerLocal = new Date(amanecerUTC.toLocaleString('en-US', { timeZone: config.ubicacion.zonaHoraria }));
+                    const atardecerLocal = new Date(atardecerUTC.toLocaleString('en-US', { timeZone: config.ubicacion.zonaHoraria }));
+
+                    estadoSistema.horariosSolares = { amanecer: amanecerLocal, atardecer: atardecerLocal };
                 }
             } catch (error) {
                 console.error('Error al calcular horarios solares:', error);
@@ -343,9 +345,9 @@
             if (!estadoSistema.horariosSolares) return;
             
             const ahora = new Date();
-            const margenMs = config.margenCambioFondo * 60 * 1000;
-            const inicioNoche = new Date(estadoSistema.horariosSolares.atardecer.getTime() + margenMs);
-            const inicioDia = new Date(estadoSistema.horariosSolares.amanecer.getTime() - margenMs);
+            const inicioNoche = estadoSistema.horariosSolares.atardecer;
+            const inicioDia = estadoSistema.horariosSolares.amanecer;
+            // Es de noche si es después del atardecer o antes del amanecer
             const esDeNoche = ahora >= inicioNoche || ahora < inicioDia;
             const nuevoFondo = esDeNoche ? config.imagenesFondo.noche : config.imagenesFondo.dia;
             
