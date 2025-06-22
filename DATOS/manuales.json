@@ -3,7 +3,7 @@
   "hoy": {
     "lluvia_alto": "0.5",
     "lluvia_medio": "0.5",
-    "lluvia_bajo": "0"
+    "lluvia_bajo": "0.5"
   },
   "ayer": {
     "lluvia_alto": 0,
