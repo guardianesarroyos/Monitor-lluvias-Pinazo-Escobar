@@ -251,6 +251,18 @@
             }
         };
 
+        // ===== NUEVA FUNCIONALIDAD: PRIORIZACIÓN DE DATOS ===== //
+        function determinarDatoFinal(lluviaAuto, lluviaManual) {
+            // Convierte a número (por si vienen como string)
+            const numAuto = parseFloat(lluviaAuto) || 0;
+            const numManual = parseFloat(lluviaManual) || 0;
+            
+            // Prioriza el mayor valor
+            return numManual > numAuto ? 
+                { valor: numManual, fuente: 'manual' } : 
+                { valor: numAuto, fuente: 'openmeteo' };
+        }
+
         // Función para calcular horarios solares
         async function calcularHorariosSolares() {
             try {
@@ -338,33 +350,45 @@
             }
         }
 
-        // Actualizar los datos de una cuenca específica
+        // Actualizar los datos de una cuenca específica (MODIFICADA PARA PRIORIZAR)
         async function actualizarCuenca(prefix, area) {
             try {
-                // Primero verificar si hay datos manuales recientes
+                // 1. Obtener datos automáticos
+                const datosAuto = await obtenerDatosOpenMeteo(area.lat, area.lon);
+                
+                // 2. Obtener datos manuales (si existen)
+                let datosManual = null;
                 if (estadoSistema.datosManuales) {
-                    const horasDesdeActualizacion = (new Date() - estadoSistema.ultimaActualizacion) / (1000 * 60 * 60);
-                    
-                    if (horasDesdeActualizacion < 24) {
-                        const lluvia = estadoSistema.datosManuales.hoy[`lluvia_${prefix}`] || "--";
-                        document.getElementById(`lluvia-${prefix}`).textContent = `${lluvia} mm`;
-                        document.getElementById(`temp-${prefix}`).innerHTML = `Temp: --°C <span class="status-indicator status-manual">(Manual)</span>`;
-                        document.querySelector(`.burbuja.${prefix}`).classList.remove('error');
-                        return true;
-                    }
+                    datosManual = {
+                        lluvia: estadoSistema.datosManuales.hoy[`lluvia_${prefix}`] || "0.0",
+                        temp: "--",
+                        status: 'manual'
+                    };
                 }
                 
-                // Si no hay datos manuales recientes, usar Open-Meteo
-                const datos = await obtenerDatosOpenMeteo(area.lat, area.lon);
-                
-                if (datos) {
-                    document.getElementById(`lluvia-${prefix}`).textContent = `${datos.lluvia} mm`;
-                    document.getElementById(`temp-${prefix}`).innerHTML = `Temp: ${datos.temp}°C <span class="status-indicator status-${datos.status}">(OM)</span>`;
-                    document.querySelector(`.burbuja.${prefix}`).classList.remove('error');
-                    return true;
+                // 3. Determinar qué dato mostrar (priorizando el mayor)
+                let datoFinal;
+                if (datosManual && datosAuto) {
+                    const resultado = determinarDatoFinal(datosAuto.lluvia, datosManual.lluvia);
+                    datoFinal = {
+                        lluvia: resultado.valor,
+                        temp: datosAuto.temp, // Siempre mostramos temp de Open-Meteo
+                        status: resultado.fuente
+                    };
+                } else if (datosAuto) {
+                    datoFinal = datosAuto;
+                } else if (datosManual) {
+                    datoFinal = datosManual;
+                } else {
+                    throw new Error("No hay datos disponibles");
                 }
                 
-                throw new Error("No se pudieron obtener datos");
+                // 4. Actualizar UI
+                document.getElementById(`lluvia-${prefix}`).textContent = `${datoFinal.lluvia} mm`;
+                document.getElementById(`temp-${prefix}`).innerHTML = `Temp: ${datoFinal.temp}°C <span class="status-indicator status-${datoFinal.status}">(${datoFinal.status === 'manual' ? 'Manual' : 'OM'})</span>`;
+                document.querySelector(`.burbuja.${prefix}`).classList.remove('error');
+                
+                return true;
             } catch (error) {
                 console.error(`Error actualizando ${prefix}:`, error);
                 document.querySelector(`.burbuja.${prefix}`).classList.add('error');
@@ -452,3 +476,4 @@
     </script>
 </body>
 </html>
+```
