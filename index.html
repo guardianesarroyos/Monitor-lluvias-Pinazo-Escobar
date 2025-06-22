@@ -11,7 +11,7 @@
     </script>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-    <title>Arroyo Pinazo-Escobar - Monitor Híbrido-Manual</title>
+    <title>Arroyo Pinazo-Escobar - Monitor Híbrido</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
         :root {
@@ -135,15 +135,6 @@
             color: #ccc;
             margin-top: 6px;
         }
-        .status-indicator {
-            font-size: 10px;
-            margin-left: 5px;
-            vertical-align: middle;
-        }
-        .status-wunderground { color: #4CAF50; }
-        .status-openmeteo { color: #2196F3; }
-        .status-error { color: #ff5555; }
-        .status-manual { color: #FFC107; }
     </style>
 </head>
 <body>
@@ -165,7 +156,7 @@
                     <div class="tooltip-text" id="tooltip-alto">Área: Pilar, Del Viso, JC. Paz</div>
                 </div>
                 <span class="valor" id="lluvia-alto">-- mm</span>
-                <span class="temp" id="temp-alto">Temp: --°C <span id="status-alto" class="status-indicator"></span></span>
+                <span class="temp" id="temp-alto">Temp: --°C</span>
             </div>
             <div class="burbuja medio">
                 CUENCA MEDIA
@@ -174,7 +165,7 @@
                     <div class="tooltip-text" id="tooltip-medio">Área: Maquinista Savio, Ing. Maschwitz</div>
                 </div>
                 <span class="valor" id="lluvia-medio">-- mm</span>
-                <span class="temp" id="temp-medio">Temp: --°C <span id="status-medio" class="status-indicator"></span></span>
+                <span class="temp" id="temp-medio">Temp: --°C</span>
             </div>
             <div class="burbuja bajo">
                 CUENCA BAJA
@@ -183,13 +174,11 @@
                     <div class="tooltip-text" id="tooltip-bajo">Área: Belén de Escobar</div>
                 </div>
                 <span class="valor" id="lluvia-bajo">-- mm</span>
-                <span class="temp" id="temp-bajo">Temp: --°C <span id="status-bajo" class="status-indicator"></span></span>
+                <span class="temp" id="temp-bajo">Temp: --°C</span>
             </div>
         </div>
         <div class="footer">
-<div class="footer">
-      fuentes OW+Hibrid | Actualizado: <span id="hora-update">--:--</span>
-    </div>
+            fuentes OW+Hibrid | Actualizado: <span id="hora-update">--:--</span>
         </div>
         <div class="creditos">
             Creado por guardianesarroyosba © 🇦🇷 Ing. Maschwitz
@@ -197,12 +186,12 @@
     </div>
 
     <script>
-        // Configuración mejorada
+        // Configuración
         const config = {
             intervaloActualizacion: 15 * 60 * 1000, // 15 minutos
             margenCambioFondo: 30, // minutos para transición día/noche
             ubicacion: {
-                lat: -34.6037, // Buenos Aires
+                lat: -34.6037,
                 lon: -58.3816,
                 zonaHoraria: 'America/Argentina/Buenos_Aires'
             },
@@ -224,30 +213,16 @@
 
         // Áreas geográficas
         const areas = {
-            alto: { 
-                lat: -34.455, 
-                lon: -58.859,
-                nombre: "Pilar"
-            },
-            medio: { 
-                lat: -34.386, 
-                lon: -58.767,
-                nombre: "Maschwitz"
-            },
-            bajo: { 
-                lat: -34.336, 
-                lon: -58.715,
-                nombre: "Escobar"
-            }
+            alto: { lat: -34.455, lon: -58.859, nombre: "Pilar" },
+            medio: { lat: -34.386, lon: -58.767, nombre: "Maschwitz" },
+            bajo: { lat: -34.336, lon: -58.715, nombre: "Escobar" }
         };
 
-        // ===== FUNCIONALIDAD PRINCIPAL ===== //
+        // Funciones principales
         function determinarDatoFinal(lluviaAuto, lluviaManual) {
             const numAuto = parseFloat(lluviaAuto) || 0;
             const numManual = parseFloat(lluviaManual) || 0;
-            return numManual > numAuto ? 
-                { valor: numManual, fuente: 'manual' } : 
-                { valor: numAuto, fuente: 'openmeteo' };
+            return numManual > numAuto ? numManual : numAuto;
         }
 
         async function cargarDatosManuales() {
@@ -272,8 +247,7 @@
                     const data = await response.json();
                     return {
                         temp: data.current.temperature_2m?.toFixed(1) || "--",
-                        lluvia: data.current.precipitation?.toFixed(1) || "0.0",
-                        status: 'openmeteo'
+                        lluvia: data.current.precipitation?.toFixed(1) || "0.0"
                     };
                 }
                 return null;
@@ -291,46 +265,32 @@
                 if (estadoSistema.datosManuales) {
                     datosManual = {
                         lluvia: estadoSistema.datosManuales.hoy[`lluvia_${prefix}`] || "0.0",
-                        temp: "--",
-                        status: 'manual'
+                        temp: "--"
                     };
                 }
                 
-                let datoFinal;
-                if (datosManual && datosAuto) {
-                    const resultado = determinarDatoFinal(datosAuto.lluvia, datosManual.lluvia);
-                    datoFinal = {
-                        lluvia: resultado.valor,
-                        temp: datosAuto.temp,
-                        status: resultado.fuente
-                    };
-                } else if (datosAuto) {
-                    datoFinal = datosAuto;
-                } else if (datosManual) {
-                    datoFinal = datosManual;
-                } else {
-                    throw new Error("No hay datos disponibles");
-                }
+                const lluviaFinal = datosManual && datosAuto 
+                    ? determinarDatoFinal(datosAuto.lluvia, datosManual.lluvia)
+                    : datosAuto?.lluvia || datosManual?.lluvia || "--";
                 
-                document.getElementById(`lluvia-${prefix}`).textContent = `${datoFinal.lluvia} mm`;
-                document.getElementById(`temp-${prefix}`).innerHTML = `Temp: ${datoFinal.temp}°C <span class="status-indicator status-${datoFinal.status}">(${datoFinal.status === 'manual' ? 'Manual' : 'OM'})</span>`;
+                const tempFinal = datosAuto?.temp || "--";
+
+                document.getElementById(`lluvia-${prefix}`).textContent = `${lluviaFinal} mm`;
+                document.getElementById(`temp-${prefix}`).textContent = `Temp: ${tempFinal}°C`;
                 document.querySelector(`.burbuja.${prefix}`).classList.remove('error');
                 return true;
             } catch (error) {
                 console.error(`Error actualizando ${prefix}:`, error);
                 document.querySelector(`.burbuja.${prefix}`).classList.add('error');
-                document.getElementById(`temp-${prefix}`).innerHTML = `Temp: --°C <span class="status-indicator status-error">(error)</span>`;
+                document.getElementById(`temp-${prefix}`).textContent = `Temp: --°C`;
                 return false;
             }
         }
 
         async function actualizarDatos() {
-            console.log("Actualizando datos...");
-            const ahora = new Date();
-            
             try {
                 await cargarDatosManuales();
-                document.getElementById('hora-update').textContent = ahora.toLocaleTimeString('es-AR', { 
+                document.getElementById('hora-update').textContent = new Date().toLocaleTimeString('es-AR', { 
                     hour: '2-digit', 
                     minute: '2-digit',
                     timeZone: config.ubicacion.zonaHoraria
@@ -346,7 +306,7 @@
             }
         }
 
-        // ===== FUNCIONES ADICIONALES ===== //
+        // Funciones auxiliares
         async function calcularHorariosSolares() {
             try {
                 const ahora = new Date();
@@ -389,7 +349,7 @@
             }
         }
 
-        // ===== INICIALIZACIÓN ===== //
+        // Inicialización
         document.addEventListener('DOMContentLoaded', function() {
             // Tooltips
             document.querySelectorAll('.info-icon').forEach(icon => {
@@ -421,7 +381,6 @@
             calcularHorariosSolares().then(() => {
                 actualizarFondoSegunHora();
                 setInterval(actualizarFondoSegunHora, 60 * 1000);
-                setInterval(calcularHorariosSolares, 24 * 60 * 60 * 1000);
             });
             
             actualizarDatos();
