@@ -142,6 +142,18 @@
         }
         .status-wunderground { color: #4CAF50; }
         .status-openmeteo { color: #2196F3; }
+        .status-error { color: #ff5555; }
+        .status-manual { color: #FFC107; }
+        .refresh-btn {
+            background-color: rgba(76, 175, 80, 0.3);
+            color: white;
+            border: none;
+            padding: 5px 10px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 12px;
+            margin-left: 10px;
+        }
     </style>
 </head>
 <body>
@@ -186,6 +198,7 @@
         </div>
         <div class="footer">
             Monitor fuente Hibrid + Open-Meteo + Wunderground | Actualizado: <span id="hora-update">--:--</span>
+            <button class="refresh-btn" id="manual-refresh">Actualizar</button>
         </div>
         <div class="creditos">
             Creado por guardianesarroyosba © 🇦🇷 Ing. Maschwitz
@@ -193,9 +206,11 @@
     </div>
 
     <script>
-        // Configuración
+        // Configuración mejorada
         const config = {
             intervaloActualizacion: 15 * 60 * 1000, // 15 minutos
+            maxReintentos: 2,
+            margenCambioFondo: 30, // minutos para transición día/noche
             ubicacion: {
                 lat: -34.6037, // Buenos Aires
                 lon: -58.3816,
@@ -205,40 +220,35 @@
                 dia: 'https://raw.githubusercontent.com/guardianesarroyos/Monitor-lluvias-Pinazo-Escobar/main/grafica-arroyo_clean.png',
                 noche: 'https://raw.githubusercontent.com/guardianesarroyos/Monitor-lluvias-Pinazo-Escobar/main/fondo_arroyo_noche.png'
             },
-                    };
+            datosManualesURL: 'https://guardianesarroyos.github.io/Monitor-lluvias-Pinazo-Escobar/DATOS/manuales.json'
+        };
 
         // Estado del sistema
         const estadoSistema = {
             horasSeleccionadas: 24,
             horariosSolares: null,
             ultimoFondo: null,
-            usandoOpenMeteo: false
+            datosManuales: null,
+            ultimaActualizacion: null
         };
 
-        // Áreas geográficas con IDs de estación Wunderground
+        // Áreas geográficas
         const areas = {
             alto: { 
                 lat: -34.455, 
                 lon: -58.859,
-                wundergroundId: "IPILAR8" // Estación Pilar
+                nombre: "Pilar"
             },
             medio: { 
                 lat: -34.386, 
                 lon: -58.767,
-                wundergroundId: "IINGEN19" // Estación Maschwitz
+                nombre: "Maschwitz"
             },
             bajo: { 
                 lat: -34.336, 
                 lon: -58.715,
-                wundergroundId: "IINGEN39" // Estación Escobar
+                nombre: "Escobar"
             }
-        };
-
-        // API Endpoints
-        const apiEndpoints = {
-            openMeteo: 'https://api.open-meteo.com/v1/forecast',
-            sunriseSunset: 'https://api.sunrise-sunset.org/json',
-            wunderground: 'https://api.weather.com/v2/pws/observations/current'
         };
 
         // Función para calcular horarios solares
@@ -248,7 +258,7 @@
                 const fechaLocal = new Date(ahora.toLocaleString('en-US', { timeZone: config.ubicacion.zonaHoraria }));
                 const fechaHoy = fechaLocal.toISOString().split('T')[0];
                 
-                const response = await fetch(`${apiEndpoints.sunriseSunset}?lat=${config.ubicacion.lat}&lng=${config.ubicacion.lon}&formatted=0&date=${fechaHoy}`);
+                const response = await fetch(`https://api.sunrise-sunset.org/json?lat=${config.ubicacion.lat}&lng=${config.ubicacion.lon}&formatted=0&date=${fechaHoy}`);
                 const data = await response.json();
                 
                 if (data.status === 'OK') {
@@ -270,7 +280,6 @@
                     amanecer: new Date(fecha.getFullYear(), fecha.getMonth(), fecha.getDate(), 7, 30, 0),
                     atardecer: new Date(fecha.getFullYear(), fecha.getMonth(), fecha.getDate(), 18, 0, 0)
                 };
-                console.log('Usando horarios solares por defecto:', estadoSistema.horariosSolares);
             }
         }
 
@@ -290,60 +299,35 @@
             if (estadoSistema.ultimoFondo !== nuevoFondo) {
                 document.body.style.backgroundImage = `url('${nuevoFondo}')`;
                 estadoSistema.ultimoFondo = nuevoFondo;
-                
-                console.log(`[${ahora.toLocaleTimeString('es-AR', {timeZone: 'America/Argentina/Buenos_Aires'})}] 
-                  Fondo cambiado a: ${esDeNoche ? 'Nocturno' : 'Diurno'}
-                  Horarios: Amanecer ${estadoSistema.horariosSolares.amanecer.toLocaleTimeString('es-AR')} | 
-                  Atardecer ${estadoSistema.horariosSolares.atardecer.toLocaleTimeString('es-AR')}`);
             }
         }
 
-        // Obtener datos de Wunderground con reintentos
-        async function obtenerDatosWunderground(stationId, intentos = config.maxReintentos) {
+        // Obtener datos manuales desde GitHub
+        async function cargarDatosManuales() {
             try {
-                const url = `${apiEndpoints.wunderground}?stationId=${stationId}&format=json&units=m&apiKey=${config.wundergroundApiKey}`;
-                const response = await fetch(url);
-                
+                const response = await fetch(`${config.datosManualesURL}?t=${new Date().getTime()}`);
                 if (response.ok) {
-                    const data = await response.json();
-                    
-                    if (data.observations?.length > 0) {
-                        const obs = data.observations[0];
-                        return {
-                            lluvia: obs.metric.precipTotal || 0,
-                            temp: obs.metric.temp,
-                            status: 'wunderground'
-                        };
-                    }
+                    estadoSistema.datosManuales = await response.json();
+                    estadoSistema.ultimaActualizacion = new Date(estadoSistema.datosManuales.ultima_actualizacion);
+                    console.log("Datos manuales cargados correctamente");
+                    return true;
                 }
-                
-                if (intentos > 1) {
-                    await new Promise(resolve => setTimeout(resolve, 1000));
-                    return obtenerDatosWunderground(stationId, intentos - 1);
-                }
-                
-                return null;
+                return false;
             } catch (error) {
-                console.error("Error Wunderground:", error);
-                if (intentos > 1) {
-                    await new Promise(resolve => setTimeout(resolve, 1000));
-                    return obtenerDatosWunderground(stationId, intentos - 1);
-                }
-                return null;
+                console.error("Error cargando datos manuales:", error);
+                return false;
             }
         }
 
-        // Obtener datos de Open-Meteo (fallback)
+        // Obtener datos de Open-Meteo
         async function obtenerDatosOpenMeteo(lat, lon) {
             try {
-                const url = `${apiEndpoints.openMeteo}?latitude=${lat}&longitude=${lon}&current=temperature_2m,precipitation&timezone=auto`;
-                const response = await fetch(url);
-                
+                const response = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,precipitation&timezone=auto`);
                 if (response.ok) {
                     const data = await response.json();
                     return {
-                        lluvia: data.current.precipitation,
-                        temp: data.current.temperature_2m,
+                        temp: data.current.temperature_2m?.toFixed(1) || "--",
+                        lluvia: data.current.precipitation?.toFixed(1) || "0.0",
                         status: 'openmeteo'
                     };
                 }
@@ -357,52 +341,64 @@
         // Actualizar los datos de una cuenca específica
         async function actualizarCuenca(prefix, area) {
             try {
-                // Intentar primero con Wunderground
-                let datos = await obtenerDatosWunderground(area.wundergroundId);
-                let usandoOpenMeteo = false;
-                
-                // Si falla Wunderground, usar Open-Meteo
-                if (!datos) {
-                    datos = await obtenerDatosOpenMeteo(area.lat, area.lon);
-                    usandoOpenMeteo = true;
-                    if (!datos) throw new Error("Ambas APIs fallaron");
+                // Primero verificar si hay datos manuales recientes
+                if (estadoSistema.datosManuales) {
+                    const horasDesdeActualizacion = (new Date() - estadoSistema.ultimaActualizacion) / (1000 * 60 * 60);
+                    
+                    if (horasDesdeActualizacion < 24) {
+                        const lluvia = estadoSistema.datosManuales.hoy[`lluvia_${prefix}`] || "--";
+                        document.getElementById(`lluvia-${prefix}`).textContent = `${lluvia} mm`;
+                        document.getElementById(`temp-${prefix}`).innerHTML = `Temp: --°C <span class="status-indicator status-manual">(Manual)</span>`;
+                        document.querySelector(`.burbuja.${prefix}`).classList.remove('error');
+                        return true;
+                    }
                 }
                 
-                // Actualizar UI
-                document.getElementById(`lluvia-${prefix}`).textContent = `${datos.lluvia} mm`;
-                document.getElementById(`temp-${prefix}`).textContent = `Temp: ${datos.temp}°C`;
+                // Si no hay datos manuales recientes, usar Open-Meteo
+                const datos = await obtenerDatosOpenMeteo(area.lat, area.lon);
                 
-                // Actualizar indicador de fuente
-                const statusElement = document.getElementById(`status-${prefix}`);
-                statusElement.className = `status-indicator status-${datos.status}`;
-                statusElement.textContent = `(${datos.status === 'wunderground' ? 'WU' : 'OM'})`;
+                if (datos) {
+                    document.getElementById(`lluvia-${prefix}`).textContent = `${datos.lluvia} mm`;
+                    document.getElementById(`temp-${prefix}`).innerHTML = `Temp: ${datos.temp}°C <span class="status-indicator status-${datos.status}">(OM)</span>`;
+                    document.querySelector(`.burbuja.${prefix}`).classList.remove('error');
+                    return true;
+                }
                 
-                // Limpiar estado de error si existía
-                document.querySelector(`.burbuja.${prefix}`).classList.remove('error');
-                
-                return true;
+                throw new Error("No se pudieron obtener datos");
             } catch (error) {
                 console.error(`Error actualizando ${prefix}:`, error);
                 document.querySelector(`.burbuja.${prefix}`).classList.add('error');
+                document.getElementById(`temp-${prefix}`).innerHTML = `Temp: --°C <span class="status-indicator status-error">(error)</span>`;
                 return false;
             }
         }
 
         // Función principal de actualización
         async function actualizarDatos() {
+            console.log("Iniciando actualización de datos...");
             const ahora = new Date();
-            document.getElementById('hora-update').textContent = ahora.toLocaleTimeString('es-AR');
             
             try {
+                // Primero intentar cargar datos manuales
+                await cargarDatosManuales();
+                
+                // Actualizar UI con hora de actualización
+                document.getElementById('hora-update').textContent = ahora.toLocaleTimeString('es-AR', { 
+                    hour: '2-digit', 
+                    minute: '2-digit',
+                    timeZone: config.ubicacion.zonaHoraria
+                });
+                
+                // Actualizar datos de cada cuenca
                 const resultados = await Promise.all([
                     actualizarCuenca('alto', areas.alto),
                     actualizarCuenca('medio', areas.medio),
                     actualizarCuenca('bajo', areas.bajo)
                 ]);
                 
-                // Verificar si estamos usando Open-Meteo como fallback
-                estadoSistema.usandoOpenMeteo = resultados.some(r => r === false);
-                
+                if (resultados.some(r => !r)) {
+                    console.log("Advertencia: Algunas cuencas no se actualizaron correctamente");
+                }
             } catch (error) {
                 console.error("Error en actualización general:", error);
             }
@@ -411,8 +407,16 @@
         // Event listeners para tooltips
         document.querySelectorAll('.info-icon').forEach(icon => {
             icon.addEventListener('click', e => {
+                e.stopPropagation();
                 const tooltipId = e.currentTarget.dataset.tooltip;
                 document.getElementById(tooltipId).classList.toggle('visible');
+            });
+        });
+
+        // Cerrar tooltips al hacer clic fuera
+        document.addEventListener('click', () => {
+            document.querySelectorAll('.tooltip-text').forEach(tooltip => {
+                tooltip.classList.remove('visible');
             });
         });
 
@@ -426,19 +430,25 @@
             });
         });
 
+        // Botón de actualización manual
+        document.getElementById('manual-refresh').addEventListener('click', actualizarDatos);
+
         // Inicialización
-        calcularHorariosSolares().then(() => {
-            // Iniciar sistema de fondo dinámico
-            actualizarFondoSegunHora();
-            setInterval(actualizarFondoSegunHora, 60 * 1000);
+        document.addEventListener('DOMContentLoaded', function() {
+            // Calcular horarios solares al inicio
+            calcularHorariosSolares().then(() => {
+                // Iniciar sistema de fondo dinámico
+                actualizarFondoSegunHora();
+                setInterval(actualizarFondoSegunHora, 60 * 1000);
+                
+                // Actualizar horarios solares cada 24 horas
+                setInterval(calcularHorariosSolares, 24 * 60 * 60 * 1000);
+            });
             
-            // Actualizar horarios solares cada 24 horas
-            setInterval(calcularHorariosSolares, 86400000);
+            // Actualizar datos inmediatamente y luego cada intervalo
+            actualizarDatos();
+            setInterval(actualizarDatos, config.intervaloActualizacion);
         });
-        
-        // Iniciar actualización de datos
-        actualizarDatos();
-        setInterval(actualizarDatos, config.intervaloActualizacion);
     </script>
 </body>
 </html>
