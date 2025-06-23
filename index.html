@@ -201,7 +201,11 @@
             },
             wunderground: {
                 apiKey: "6532d6454b8aa370768e63d6ba5a832e",
-                stationId: "IINGEN19"
+                stationIds: {
+                    alto: "IPILAR8",   // La Lonja
+                    medio: "IINGEN19"  // Maschwitz
+                    // bajo: null // No hay estación WU para bajo
+                }
             },
             imagenesFondo: {
                 dia: 'https://raw.githubusercontent.com/guardianesarroyos/Monitor-lluvias-Pinazo-Escobar/main/grafica-arroyo_clean.png',
@@ -287,15 +291,15 @@
         async function actualizarCuenca(prefix, area) {
             try {
                 let datosAuto = null;
-                if (prefix === "medio") {
-                    // 1. Intenta Wunderground primero
-                    datosAuto = await obtenerDatosWunderground(config.wunderground.stationId, config.wunderground.apiKey);
+                // Si hay stationId para la cuenca, prioriza Wunderground
+                const stationId = config.wunderground.stationIds[prefix];
+                if (stationId) {
+                    datosAuto = await obtenerDatosWunderground(stationId, config.wunderground.apiKey);
                     if (!datosAuto) {
-                        // 2. Si falla, intenta OpenMeteo
                         datosAuto = await obtenerDatosOpenMeteo(area.lat, area.lon);
                     }
                 } else {
-                    // Para alto y bajo sigue OpenMeteo como siempre
+                    // Si no hay estación WU, solo OpenMeteo
                     datosAuto = await obtenerDatosOpenMeteo(area.lat, area.lon);
                 }
 
