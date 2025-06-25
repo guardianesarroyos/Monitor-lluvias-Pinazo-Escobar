@@ -10,7 +10,7 @@
 
 ## 📖 Descripción
 
-**Monitor de Lluvias** es una aplicación web y pwa progresiva que unifica en una sola vista los datos de seis (6) estaciones meteorológicas cada 15' distribuidas a lo largo del **Arroyo Pinazo-Escobar**, permitiendo interpretar en tiempo real **dónde llovió más** dentro de la cuenca.
+**Monitor de Lluvias** es una aplicación web y pwa que unifica en una sola vista los datos de seis (6) estaciones meteorológicas cada 15' distribuidas a lo largo del **Arroyo Pinazo-Escobar**, permitiendo interpretar en tiempo real **dónde llovió más** dentro de la cuenca.
 
 Esta visualización ayuda a anticipar posibles crecidas cuando se detectan precipitaciones intensas **aguas arriba**, ya que el sistema fluvial responde con inercia hidrológica a lo largo de varias horas.
 
