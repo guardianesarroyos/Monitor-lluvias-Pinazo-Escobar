@@ -106,4 +106,23 @@ Consultá el archivo [`LICENSE`](./LICENSE) para más información.
 
 - 🌱 Desarrollado por: [guardianesarroyosba](https://github.com/guardianesarroyosba)  
 - 🤝 Apoyo: vecinos, técnicos y observadores de la cuenca del Pinazo–Escobar  
-- 🛰️ Fuentes de datos: estaciones meteorológicas comunitarias y colaborativas  
+- 🛰️ Fuentes de datos: estaciones meteorológicas comunitarias y colaborativas
+
+---
+
+## Configuración de la API Key de Wunderground
+
+Por motivos de seguridad, la clave de API de Wunderground **no está incluida en este repositorio**.
+
+Para que la aplicación funcione correctamente en tu entorno local, debes crear un archivo llamado `config.local.js` en la raíz del proyecto con el siguiente contenido:
+
+```js
+window.WU_API_KEY = "TU_API_KEY_AQUI";
+```
+
+> **Importante:**  
+> Este archivo está en `.gitignore` y **no debe subirse al repositorio**.
+
+Si no tienes una clave, solicita acceso al administrador del proyecto.
+
+---
