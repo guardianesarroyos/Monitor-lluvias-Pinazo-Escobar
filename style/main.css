@@ -1,46 +1,52 @@
 /* style.css */
 
-/* Variables CSS - MOVIDAS AL PRINCIPIO */
+/* Variables CSS */
 :root {
     --color-alto: #64b5f6;
     --color-medio: #4db6ac;
     --color-bajo: #ffd54f;
     --color-fondo: #121212;
-    --texto-claro: #ece9e9;
+    --texto-claro: #f5f5f5;
     --color-naranja: #ffa726;
     --color-estable: #ffc107;
     --color-error: #ff6b6b;
 }
 
-/* Reseteo global - MOVIDO AL PRINCIPIO */
+/* Reseteo global */
 * { box-sizing: border-box; }
 
 body {
     font-family: "Inter", sans-serif;
-    background-color: #595858; /* Fondo oscuro de respaldo */
+    background-color: #282c34; /* Fondo oscuro de respaldo (solo si la imagen no carga) */
     margin: 0;
-    padding: 20px;
     display: flex;
     justify-content: center;
     align-items: flex-start; /* Alinea arriba */
-    min-height: 100vh;
+    min-height: 100vh; /* Asegura que el body ocupe al menos toda la altura de la ventana */
     box-sizing: border-box;
     background-repeat: no-repeat;
     background-position: center center;
     background-attachment: fixed;
     background-size: cover;
     color: var(--texto-claro);
-    transition: background-image 0.5s ease-in-out; /* Mantenemos la transición */
+    transition: background-image 0.5s ease-in-out;
 }
+
 .contenedor {
     width: 100%;
-    height: 100vh;
-    padding: 20px;
+    max-width: 400px; /* Limita el ancho máximo del contenedor en pantallas grandes */
+    height: 100%; /* Permite que el contenedor crezca con el contenido */
+    min-height: 95vh; /* Asegura una altura mínima para que las burbujas tengan espacio */
+    padding: 20px; /* Padding interno para el contenido del contenedor */
+    margin: 20px auto; /* Margen superior/inferior y centrado horizontal */
     text-align: center;
     display: flex;
     flex-direction: column;
-    background-color: rgba(0, 0, 0, 0.1);
+    background-color: transparent; /* ¡CONTENEDOR COMPLETAMENTE TRANSPARENTE! */
+    border-radius: 12px;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.5); /* Sombra para que destaque sin ser opaco */
 }
+
 .header { margin-bottom: 10px; }
 .titulo-principal {
     font-size: 22px;
@@ -66,16 +72,22 @@ body {
     border-radius: 6px;
     cursor: pointer;
     font-size: 14px;
+    transition: background-color 0.3s ease;
 }
 .selector-tiempo button.active {
     background-color: var(--color-alto);
 }
+.selector-tiempo button:hover {
+    background-color: rgba(51, 51, 51, 1);
+}
+
 .grafica-container {
     position: relative;
-    flex-grow: 1;
+    flex-grow: 1; /* Permite que ocupe el espacio disponible */
     margin: 10px 0;
     border-radius: 12px;
-    overflow: hidden;
+    overflow: hidden; /* Asegura que las burbujas no se salgan si se desbordan */
+    background-color: rgba(0, 0, 0, 0.05); /* Un fondo muy sutil para el área de las burbujas */
 }
 .burbuja {
     position: absolute;
@@ -84,29 +96,50 @@ body {
     padding: 12px;
     text-align: left;
     border-radius: 10px;
-    background-color: rgba(0,161,255,0.1);
+    background-color: rgba(0,161,255,0.15); /* Mantiene la traslucidez base de la burbuja */
     font-weight: bold;
     box-shadow: 0 2px 6px rgba(0,0,0,0.3);
     left: 50%;
     transform: translateX(-50%);
+    transition: all 0.3s ease;
+    backdrop-filter: blur(2px); /* ¡BLUR LIGERO PARA LAS BURBUJAS! */
+    -webkit-backdrop-filter: blur(2px); /* Para compatibilidad */
 }
+
+/* Posicionamiento específico para cada burbuja */
+.burbuja.alto {
+    top: 10%; /* Posición superior */
+}
+.burbuja.medio {
+    top: 40%; /* Posición media */
+}
+.burbuja.bajo {
+    top: 70%; /* Posición inferior */
+}
+
 .burbuja.error {
-    background-color: rgba(255, 107, 107, 0.1);
+    background-color: rgba(255, 107, 107, 0.2);
     border-left: 4px solid var(--color-error);
 }
 .burbuja span.valor { font-size: 24px; display: block; margin-top: 5px; }
 .burbuja span.temp { font-size: 14px; display: block; color: #ccc; margin-top: 4px; text-align: right; }
-.alto { top: 7%; border: 2px solid var(--color-alto); }
-.medio { top: 34%; border: 2px solid var(--color-medio); }
-.bajo { top: 64%; border: 2px solid var(--color-bajo); }
 .info-wrapper { position: relative; float: right; }
-.info-icon { font-size: 18px; color: var(--texto-claro); cursor: pointer; margin-left: 8px; }
+.info-icon { 
+    font-size: 18px; 
+    color: var(--texto-claro); 
+    cursor: pointer; 
+    margin-left: 8px; 
+    transition: color 0.3s ease;
+}
+.info-icon:hover {
+    color: var(--color-naranja);
+}
 .tooltip-text {
     display: none;
     position: absolute;
     top: -10px;
     right: 110%;
-    background-color: #333;
+    background-color: rgba(51, 51, 51, 0.9);
     color: #fff;
     padding: 8px;
     border-radius: 6px;
@@ -114,6 +147,7 @@ body {
     width: 160px;
     z-index: 10;
     text-align: left;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.4);
 }
 .tooltip-text.visible { display: block; }
 .footer {
@@ -133,7 +167,10 @@ body {
 /* Responsive design */
 @media (max-width: 768px) {
     .contenedor {
-        padding: 10px;
+        padding: 15px; /* Ajuste de padding para móviles */
+        margin: 10px auto; /* Margen menor en móviles */
+        height: auto; /* Altura automática para que se adapte al contenido */
+        min-height: 95vh; /* Asegura una altura mínima en móviles */
     }
     .titulo-principal {
         font-size: 20px;
